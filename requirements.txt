@@ -1,1 +1,9 @@
 openai
+python-dotenv
+datasets
+numpy
+tqdm
+scikit-learn
+pip-system-certs
+evaluate
+bert-score
