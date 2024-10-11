@@ -19,4 +19,8 @@ plotly
 ragas
 renumics-spotlight
 streamlit
-
+# shutil
+dotted_dict
+PyPDF2
+# faiss-gpu
+faiss-cpu
