@@ -5,5 +5,18 @@ numpy
 tqdm
 scikit-learn
 pip-system-certs
-evaluate
-bert-score
+# evaluate
+# bert-score
+langchain-openai
+langchain-community
+langchain-text-splitters
+chromadb
+langchain
+beautifulsoup4
+pypdf
+wikipedia
+plotly
+ragas
+renumics-spotlight
+streamlit
+
