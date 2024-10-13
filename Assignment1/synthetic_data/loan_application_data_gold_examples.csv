@@ -1,0 +1,31 @@
+Application No.,Income,Credit Score,Family Members,Outstanding Debt,Loan Request,Employment Status,Loan Decision
+1,8165.78,583,1,3528.43,32083.21,Employed,Not Approved
+2,5712.85,589,4,654.17,21860.75,Employed,Not Approved
+3,8040.84,313,4,4331.05,9312.24,Unemployed,Not Approved
+4,7941.17,792,2,141.64,24533.24,Unemployed,Approved
+5,2840.51,424,6,1955.73,47731.04,Self-Employed,Not Approved
+6,2867.44,328,6,2071.69,11038.52,Employed,Not Approved
+7,8567.21,346,0,2366.59,43413.46,Employed,Not Approved
+8,8396.78,435,6,4683.17,45824.01,Self-Employed,Not Approved
+9,9102.39,444,2,4932.56,37656.36,Self-Employed,Not Approved
+10,7563.42,561,2,4074.51,9623.44,Employed,Not Approved
+11,5656.19,833,4,2352.94,36339.31,Unemployed,Not Approved
+12,2068.41,819,0,3530.06,26508.8,Employed,Approved
+13,8644.64,749,4,296.15,16016.04,Self-Employed,Approved
+14,5255.11,353,5,887.75,7423.54,Unemployed,Not Approved
+15,9861.24,501,0,3855.86,20325.84,Unemployed,Not Approved
+16,5029.01,553,3,164.49,35812.78,Employed,Not Approved
+17,9147.7,741,4,3496.37,13913.6,Unemployed,Not Approved
+18,6995.46,446,6,2456.62,49720.51,Unemployed,Not Approved
+19,2905.8,636,2,992.78,13382.18,Unemployed,Not Approved
+20,4273.06,534,6,1179.55,23440.54,Employed,Not Approved
+21,9684.14,400,3,2455.63,48224.07,Self-Employed,Not Approved
+22,9861.63,340,5,2401.71,20426.86,Unemployed,Not Approved
+23,3992.34,406,1,2128.44,45954.09,Self-Employed,Not Approved
+24,4074.48,465,4,2252.46,46855.55,Employed,Not Approved
+25,9857.8,709,6,205.22,34054.2,Self-Employed,Approved
+26,3202.16,829,5,4375.95,15379.71,Self-Employed,Not Approved
+27,3893.94,698,3,4232.1,23353.54,Self-Employed,Not Approved
+28,9349.67,339,4,4551.44,30343.94,Self-Employed,Not Approved
+29,5714.34,514,0,284.54,28729.54,Self-Employed,Approved
+30,3446.93,834,3,3818.34,44675.58,Employed,Not Approved

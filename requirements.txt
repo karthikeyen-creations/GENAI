@@ -24,3 +24,8 @@ dotted_dict
 PyPDF2
 # faiss-gpu
 faiss-cpu
+torch
+transformers
+sentence-transformers
+accelerate
+gradio
