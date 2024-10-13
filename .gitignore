@@ -164,5 +164,4 @@ cython_debug/
 chroma_db/
 faiss_index/
 
-Assignment6/Assign6-RAG-PDF-Chat/.gitattributes
-
+/Assignment6/Assign6-RAG-PDF-Chat
