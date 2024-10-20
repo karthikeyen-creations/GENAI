@@ -29,3 +29,10 @@ transformers
 sentence-transformers
 accelerate
 gradio
+pandas
+tweepy
+praw
+google-api-python-client
+pytumblr
+gnews
+bs4
