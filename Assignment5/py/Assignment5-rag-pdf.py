@@ -102,7 +102,8 @@ def ask_and_get_answer(vector_store, q, k=3):
 # Function to check if a directory exists
 if os.path.isdir(CHROMA_PATH):
     # os.rmdir(CHROMA_PATH)
-    shutil.rmtree(CHROMA_PATH)
+    shutil.rmtree(CHROMA_PATH, onexc=lambda func, path, exc: os.chmod(path, 0o777))
+    # shutil.rmtree(CHROMA_PATH)
     print('deleted ' + CHROMA_PATH)
     
 # Loading the pdf document into LangChain 
@@ -115,7 +116,7 @@ data = load_document(os.path.join( os.getcwd(), 'Assignment5','py','files', 'Per
 # Splitting the document into chunks
 chunks = chunk_data(data)
 
-# print(chunks)
+print(chunks)
 # Creating a Chroma vector store using the provided text chunks and embedding model (default is text-embedding-3-small)
 vector_store = create_embeddings_chroma(chunks)
 

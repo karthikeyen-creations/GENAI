@@ -229,6 +229,8 @@ def collect_social_media_and_news_data(company_list, start_date, end_date):
     all_data = []
     for company in company_list:
         
+        print(company)
+        
         reddit_data=[]
         youtube_data=[]
         tumblr_data=[]
@@ -264,29 +266,45 @@ def collect_social_media_and_news_data(company_list, start_date, end_date):
             # {"platform": "Twitter", "company": company, "data": item} for item in twitter_data
         # ])
         all_data.extend([
-            {"platform": "Reddit", "company": company, "data": item} for item in reddit_data
+            {"platform": "Reddit", "company": company, 
+             "page_content": {"title":item["title"],
+                              "content":item["content"]}} for item in reddit_data
         ])
         all_data.extend([
-            {"platform": "YouTube", "company": company, "data": item} for item in youtube_data
+            {"platform": "YouTube", "company": company, 
+              "page_content": {"title":item["snippet"]["title"],
+                               "content":item["snippet"]["description"]}} for item in youtube_data
         ])
         all_data.extend([
-            {"platform": "Tumblr", "company": company, "data": item} for item in tumblr_data
+            {"platform": "Tumblr", "company": company, 
+             "page_content": {"title":item["blog"]["title"],
+                               "content":item["blog"]["description"]}} for item in tumblr_data
         ])
         
         all_data.extend([
-            {"platform": "Google News", "company": company, "data": item} for item in google_news_data
+            {"platform": "Google News", "company": company, 
+             "page_content": {"title":item["title"],
+                               "content":item["description"]}} for item in google_news_data
         ])
         all_data.extend([
-            {"platform": "Financial Times", "company": company, "data": item} for item in ft_data
+            {"platform": "Financial Times", "company": company, 
+              "page_content": {"title":item["title"],
+                               "content":item["description"]}} for item in ft_data
         ])
         all_data.extend([
-            {"platform": "Bloomberg", "company": company, "data": item} for item in bloomberg_data
+            {"platform": "Bloomberg", "company": company, 
+              "page_content": {"title":item["title"],
+                               "content":item["description"]}} for item in bloomberg_data
         ])
         all_data.extend([
-            {"platform": "Reuters", "company": company, "data": item} for item in reuters_data
+            {"platform": "Reuters", "company": company, 
+              "page_content": {"title":item["title"],
+                               "content":item["description"]}} for item in reuters_data
         ])
         all_data.extend([
-            {"platform": "Wall Street Journal", "company": company, "data": item} for item in wsj_data
+            {"platform": "Wall Street Journal", "company": company, 
+              "page_content": {"title":item["title"],
+                               "content":item["description"]}} for item in wsj_data
         ])
     
     return all_data
