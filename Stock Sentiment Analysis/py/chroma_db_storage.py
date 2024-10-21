@@ -1,116 +1,119 @@
-import shutil
 import os
-import chromadb
-from chromadb.config import Settings
-from chromadb.utils import embedding_functions
-from typing import List, Optional, Dict, Any
-from langchain.schema import Document
-import numpy as np
+from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureOpenAIEmbeddings
+import warnings
+import shutil
 
-persist_directory="./Stock Sentiment Analysis/chroma_db"
+warnings.filterwarnings("ignore")
 
-class ChromaDBStorage:
-    def __init__(self, collection_name: str, persist_directory: str = persist_directory):
-        self.client = chromadb.PersistentClient(path=persist_directory)
-        self.collection = self.client.get_or_create_collection(collection_name)
-        self.embedding_function = None
+CHROMA_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "chroma_db")
 
-    def set_embedding_function(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=model_name)
- 
-    def save_documents(self, documents: List[Document]):
-        ids = [str(i) for i in range(len(documents))]  # Generate IDs if not present
-        contents = [doc.page_content for doc in documents]
-        # metadatas = [doc.metadata for doc in documents if doc.metadata]
-        metadatas = metadatas = [self._sanitize_metadata(doc.metadata) for doc in documents if doc.metadata]
-        platforms = [doc.metadata["platform"] for doc in documents if doc.metadata]
-        companys = [doc.metadata["company"] for doc in documents if doc.metadata]
-        ingestion_timestamps = [doc.metadata["ingestion_timestamp"] for doc in documents if doc.metadata]
-        word_count = [doc.metadata["word_count"] for doc in documents if doc.metadata]
-        positives = [doc.metadata["positive"] for doc in documents if doc.metadata]
-        neutrals = [doc.metadata["neutral"] for doc in documents if doc.metadata]
-        negatives = [doc.metadata["negative"] for doc in documents if doc.metadata]
-         
-
-        embeddings = None
-        if self.embedding_function:
-            embeddings = self.embedding_function(contents)
-
-        self.collection.add(
-            ids=ids,
-            documents=contents,
-            metadatas=metadatas if metadatas else None,
-            embeddings=embeddings
-        )
-        self.client.persist()
-        print(f"Added {len(documents)} documents to ChromaDB collection '{self.collection.name}'")
-
-    def fetch_documents(self, metadata_filter: Dict[str, Any]) -> List[Document]:
-        results = self.collection.query(
-            query_texts=None,
-            where=metadata_filter,
-            include=["documents", "metadatas"]
-        )
-
-        documents = []
-        for content, metadata in zip(results['documents'][0], results['metadatas'][0]):
-            documents.append(Document(page_content=content, metadata=metadata))
-
-        return documents
-
-    def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        def sanitize_value(value):
-            if isinstance(value, np.float32):
-                return float(value)
-            elif isinstance(value, (str, int, float, bool)):
-                return value
-            else:
-                return str(value)
-
-        return {k: sanitize_value(v) for k, v in metadata.items()}
-    
-    def fetch_documents_by_multiple_metadata(self, metadata_filters: List[Dict[str, Any]]) -> List[Document]:
-        all_documents = []
-        for filter in metadata_filters:
-            documents = self.fetch_documents(filter)
-            all_documents.extend(documents)
-        return all_documents
-
-
-def delete_existingchromaDBs():
-        if os.path.isdir(persist_directory):
-            shutil.rmtree(persist_directory, onexc=lambda func, path, exc: os.chmod(path, 0o777))
-            print(f'Deleted existing {persist_directory}')
-
-    
-# Example usage:
-if __name__ == "__main__":
+# If getting upgrade warning, run the following from command line:
+# chroma utils vacuum --path chroma_db
+def load_document(file):
     import os
+    name, extension = os.path.splitext(file)
 
-    # Specify the directory for ChromaDB
-    chroma_directory = os.path.join(os.getcwd(), "my_chroma_db")
+    if extension == '.pdf':
+        from langchain_community.document_loaders import PyPDFLoader
+        print(f'Loading {file}')
+        loader = PyPDFLoader(file)
+    elif extension == '.docx':
+        from langchain.document_loaders import Docx2txtLoader
+        print(f'Loading {file}')
+        loader = Docx2txtLoader(file)
+    elif extension == '.txt':
+        from langchain.document_loaders import TextLoader
+        loader = TextLoader(file)
+    else:
+        print('Document format is not supported!')
+        return None
 
-    # Create some sample documents
-    docs = [
-        Document(page_content="This is a document about Python", metadata={"topic": "programming", "language": "Python"}),
-        Document(page_content="This is a document about JavaScript", metadata={"topic": "programming", "language": "JavaScript"}),
-        Document(page_content="This is a document about machine learning", metadata={"topic": "AI", "subtopic": "machine learning"}),
-        Document(page_content="This is a document about deep learning", metadata={"topic": "AI", "subtopic": "deep learning"})
-    ]
+    data = loader.load()
+    return data
 
-    # Initialize the ChromaDBStorage with a specific storage location
-    saver = ChromaDBStorage("my_collection", persist_directory=chroma_directory)
 
-    # Save the documents
-    saver.save_documents(docs)
+# wikipedia
+def load_from_wikipedia(query, lang='en', load_max_docs=2):
+    from langchain_community.document_loaders import WikipediaLoader
+    loader = WikipediaLoader(query=query, lang=lang, load_max_docs=load_max_docs)
+    data = loader.load()
+    return data
+  
 
-    # Fetch documents about programming
-    programming_docs = saver.fetch_documents({"topic": "programming"})
-    print(f"Found {len(programming_docs)} documents about programming")
+def chunk_data(data, chunk_size=256):
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
+    chunks = text_splitter.split_documents(data)
+    return chunks 
 
-    # Fetch documents about Python or AI
-    multi_filter_docs = saver.fetch_documents_by_multiple_metadata([
-        {"language": "Python"},
-        {"topic": "AI"}
-    ])
-    print(f"Found {len(multi_filter_docs)} documents about Python or AI")
+
+def create_embeddings_chroma(chunks, persist_directory=CHROMA_PATH):
+    from langchain_community.vectorstores import Chroma
+ 
+    # Instantiate an embedding model from Azure OpenAI
+    embeddings = AzureOpenAIEmbeddings(
+        model=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
+        api_key=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
+        api_version=os.getenv("AZURE_OPENAI_EMBEDDING_API_VERSION"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_EMBEDDING_ENDPOINT")
+    )
+
+    # Create a Chroma vector store using the provided text chunks and embedding model, 
+    # configuring it to save data to the specified directory 
+    vector_store = Chroma.from_documents(chunks, embeddings, persist_directory=persist_directory) 
+
+    return vector_store  # Return the created vector store
+
+
+def load_embeddings_chroma(persist_directory=CHROMA_PATH):
+    from langchain.vectorstores import Chroma
+
+    # Instantiate the same embedding model used during creation
+    embeddings = AzureOpenAIEmbeddings(
+        model=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
+        api_key=os.getenv("AZURE_OPENAI_EMBEDDING_API_KEY"),
+        api_version=os.getenv("AZURE_OPENAI_EMBEDDING_API_VERSION"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_EMBEDDING_ENDPOINT")
+    )
+
+    # Load the Chroma vector store from the specified directory, using the provided embedding function
+    vector_store = Chroma(persist_directory=persist_directory, embedding_function=embeddings) 
+
+    return vector_store  # Return the loaded vector store
+
+def ask_and_get_answer(vector_store, q, k=3):
+    from langchain.chains import RetrievalQA
+
+    llm = AzureChatOpenAI(temperature=0,
+                      api_key=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
+                      api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+                      azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+                      model=os.getenv("AZURE_OPENAI_MODEL_NAME")
+            )
+
+    retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': k})
+
+    chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
+    
+    answer = chain.invoke(q)
+    return answer
+
+# Function to check if a directory exists
+if os.path.isdir(CHROMA_PATH):
+    # os.rmdir(CHROMA_PATH)
+    shutil.rmtree(CHROMA_PATH, onexc=lambda func, path, exc: os.chmod(path, 0o777))
+    # shutil.rmtree(CHROMA_PATH)
+    print('deleted ' + CHROMA_PATH)
+    
+# Splitting the document into chunks
+chunks = chunk_data(social_media_document)
+
+print(chunks)
+# Creating a Chroma vector store using the provided text chunks and embedding model (default is text-embedding-3-small)
+vector_store = create_embeddings_chroma(chunks)
+
+# Asking questions
+q = 'Summarize the whole input in 150 words'
+answer = ask_and_get_answer(vector_store, q)
+print(answer)

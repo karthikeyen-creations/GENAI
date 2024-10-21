@@ -37,3 +37,4 @@ pytumblr
 gnews
 bs4
 requests
+certifi

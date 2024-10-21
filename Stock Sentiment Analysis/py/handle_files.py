@@ -1,8 +1,10 @@
 
 
+from datetime import datetime
 import json
 import os
 import pickle
+from langchain.schema import Document
 import pandas as pd
 
 def create_files(social_media_data):
@@ -25,6 +27,20 @@ def create_files(social_media_data):
         
     df.to_pickle(folder_path+"/social_media_data.pkl")
 
+def fetch_social_media_data():
+        with open('Stock Sentiment Analysis/files/social_media_data.json', 'r') as file:
+            data = json.load(file)
+        social_media_document = []
+        for item in social_media_document:
+            social_media_document.append(Document(
+                page_content=str(item["page_content"]), 
+                metadata={"platform":item["platform"],
+                          "company":item["company"],
+                          "ingestion_timestamp":datetime.now().isoformat(),
+                          "word_count":len(item["page_content"])
+                          }))
+        return social_media_document
+        
 def save_ingested_data(ingested_data):
     # Save the list to a file
     with open('Stock Sentiment Analysis/files/ingested_data.pkl', 'wb') as file:
