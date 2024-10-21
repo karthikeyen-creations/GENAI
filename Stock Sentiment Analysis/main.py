@@ -1,7 +1,7 @@
 from py.daily_fetch import * 
 from py.handle_files import *
 from py.ingest import *
-from py.chromaDBStorage import *
+from py.chroma_db_storage import *
 from py.sentiment_analysis import *
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
