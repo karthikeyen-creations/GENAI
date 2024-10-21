@@ -27,12 +27,13 @@ from typing import List, Dict, Any
 # # Save Analysed Data
 # save_analysed_data(analysed_data)
 
-# # Retrieve data from Pickle file
-# pickled_data = get_analysed_data()
-# print(len(pickled_data))
+# Retrieve data from Pickle file
+pickled_data = get_analysed_data()
+print(len(pickled_data))
         
- 
-# # Initialize the ChromaDBStorage
-# chroma_storage = SentimentAnalysisChromaStorage()
-# chroma_storage.store_data(pickled_data)
+# Delete existing ChromaDB 
+delete_existingchromaDBs()
+# Initialize the ChromaDBStorage
+chroma_storage = ChromaDBStorage("sentiment_analysed_data")
+chroma_storage.save_documents(pickled_data)
 

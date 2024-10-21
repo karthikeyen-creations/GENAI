@@ -1,137 +1,116 @@
-import os
-import pickle
-from typing import List, Dict, Any
-from datetime import datetime
-from uuid import uuid4
-from langchain.schema import Document
-from langchain_openai import AzureOpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-import warnings
 import shutil
+import os
+import chromadb
+from chromadb.config import Settings
+from chromadb.utils import embedding_functions
+from typing import List, Optional, Dict, Any
+from langchain.schema import Document
+import numpy as np
 
-warnings.filterwarnings("ignore")
+persist_directory="./Stock Sentiment Analysis/chroma_db"
 
-CHROMA_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "chroma_db")
+class ChromaDBStorage:
+    def __init__(self, collection_name: str, persist_directory: str = persist_directory):
+        self.client = chromadb.PersistentClient(path=persist_directory)
+        self.collection = self.client.get_or_create_collection(collection_name)
+        self.embedding_function = None
 
-class SentimentAnalysisChromaStorage:
-    def __init__(self, collection_name: str = "stock_sentiment_analysis"):
-        self.collection_name = collection_name
-        self.persist_directory = CHROMA_PATH
-        self.embeddings = AzureOpenAIEmbeddings(
-            model=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
-            api_key=os.getenv("AZURE_OPENAI_EMBEDDING_API_KEY"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-            azure_endpoint=os.getenv("AZURE_OPENAI_EMBEDDING_ENDPOINT")
+    def set_embedding_function(self, model_name: str = "all-MiniLM-L6-v2"):
+        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=model_name)
+ 
+    def save_documents(self, documents: List[Document]):
+        ids = [str(i) for i in range(len(documents))]  # Generate IDs if not present
+        contents = [doc.page_content for doc in documents]
+        # metadatas = [doc.metadata for doc in documents if doc.metadata]
+        metadatas = metadatas = [self._sanitize_metadata(doc.metadata) for doc in documents if doc.metadata]
+        platforms = [doc.metadata["platform"] for doc in documents if doc.metadata]
+        companys = [doc.metadata["company"] for doc in documents if doc.metadata]
+        ingestion_timestamps = [doc.metadata["ingestion_timestamp"] for doc in documents if doc.metadata]
+        word_count = [doc.metadata["word_count"] for doc in documents if doc.metadata]
+        positives = [doc.metadata["positive"] for doc in documents if doc.metadata]
+        neutrals = [doc.metadata["neutral"] for doc in documents if doc.metadata]
+        negatives = [doc.metadata["negative"] for doc in documents if doc.metadata]
+         
+
+        embeddings = None
+        if self.embedding_function:
+            embeddings = self.embedding_function(contents)
+
+        self.collection.add(
+            ids=ids,
+            documents=contents,
+            metadatas=metadatas if metadatas else None,
+            embeddings=embeddings
         )
-        self.vector_store = None
+        self.client.persist()
+        print(f"Added {len(documents)} documents to ChromaDB collection '{self.collection.name}'")
 
-    def chunk_data(self, data: List[Document], chunk_size: int = 256) -> List[Document]:
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
-        return text_splitter.split_documents(data)
-
-    def create_embeddings_chroma(self, chunks: List[Document]) -> Chroma:
-        return Chroma.from_documents(
-            chunks,
-            self.embeddings,
-            persist_directory=self.persist_directory,
-            collection_name=self.collection_name
+    def fetch_documents(self, metadata_filter: Dict[str, Any]) -> List[Document]:
+        results = self.collection.query(
+            query_texts=None,
+            where=metadata_filter,
+            include=["documents", "metadatas"]
         )
 
-    def store_data(self, data: List[Document]) -> None:
-        if os.path.isdir(self.persist_directory):
-            shutil.rmtree(self.persist_directory, onexc=lambda func, path, exc: os.chmod(path, 0o777))
-            print(f'Deleted existing {self.persist_directory}')
+        documents = []
+        for content, metadata in zip(results['documents'][0], results['metadatas'][0]):
+            documents.append(Document(page_content=content, metadata=metadata))
 
-        chunks = self.chunk_data(data)
-        self.vector_store = self.create_embeddings_chroma(chunks)
-        self.vector_store.persist()
-        print(f"Stored {len(chunks)} chunks in Chroma DB.")
+        return documents
 
-        # Save the vector store to a file
-        with open('Stock Sentiment Analysis/files/vector_store.pkl', 'wb') as file:
-            pickle.dump(self.vector_store, file)
-        print("Vector store saved to file.")
+    def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        def sanitize_value(value):
+            if isinstance(value, np.float32):
+                return float(value)
+            elif isinstance(value, (str, int, float, bool)):
+                return value
+            else:
+                return str(value)
 
-    def query_data(self, query_text: str, n_results: int = 5) -> List[Dict[str, Any]]:
-        if not self.vector_store:
-            raise ValueError("Vector store not initialized. Please store data first.")
-        
-        results = self.vector_store.similarity_search_with_score(query_text, k=n_results)
-        return [
-            {
-                "content": doc.page_content,
-                "metadata": doc.metadata,
-                "score": score
-            } for doc, score in results
-        ]
+        return {k: sanitize_value(v) for k, v in metadata.items()}
+    
+    def fetch_documents_by_multiple_metadata(self, metadata_filters: List[Dict[str, Any]]) -> List[Document]:
+        all_documents = []
+        for filter in metadata_filters:
+            documents = self.fetch_documents(filter)
+            all_documents.extend(documents)
+        return all_documents
 
-    def get_data_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
-        if not self.vector_store:
-            raise ValueError("Vector store not initialized. Please store data first.")
-        
-        results = self.vector_store.get(
-            where={
-                "timestamp": {
-                    "$gte": start_date.isoformat(),
-                    "$lte": end_date.isoformat()
-                }
-            }
-        )
-        return [
-            {
-                "content": doc.page_content,
-                "metadata": doc.metadata,
-            } for doc in results
-        ]
 
-    def update_data(self, id: str, new_content: str, new_metadata: Dict[str, Any]) -> None:
-        if not self.vector_store:
-            raise ValueError("Vector store not initialized. Please store data first.")
-        
-        self.vector_store.update(
-            ids=[id],
-            documents=[new_content],
-            metadatas=[new_metadata]
-        )
-        print(f"Updated document with ID: {id}")
+def delete_existingchromaDBs():
+        if os.path.isdir(persist_directory):
+            shutil.rmtree(persist_directory, onexc=lambda func, path, exc: os.chmod(path, 0o777))
+            print(f'Deleted existing {persist_directory}')
 
-    def delete_data(self, id: str) -> None:
-        if not self.vector_store:
-            raise ValueError("Vector store not initialized. Please store data first.")
-        
-        self.vector_store.delete(ids=[id])
-        print(f"Deleted document with ID: {id}")
-
-# Example usage
+    
+# Example usage:
 if __name__ == "__main__":
-    # Initialize the SentimentAnalysisChromaStorage
-    chroma_storage = SentimentAnalysisChromaStorage()
-    
-    # Example documents
-    sample_docs = [
-        Document(page_content="NASDAQ stock prices are rising.", metadata={"source": "twitter", "sentiment": "positive", "timestamp": datetime.now().isoformat()}),
-        Document(page_content="New tech IPO announced on NASDAQ.", metadata={"source": "facebook", "sentiment": "neutral", "timestamp": datetime.now().isoformat()})
+    import os
+
+    # Specify the directory for ChromaDB
+    chroma_directory = os.path.join(os.getcwd(), "my_chroma_db")
+
+    # Create some sample documents
+    docs = [
+        Document(page_content="This is a document about Python", metadata={"topic": "programming", "language": "Python"}),
+        Document(page_content="This is a document about JavaScript", metadata={"topic": "programming", "language": "JavaScript"}),
+        Document(page_content="This is a document about machine learning", metadata={"topic": "AI", "subtopic": "machine learning"}),
+        Document(page_content="This is a document about deep learning", metadata={"topic": "AI", "subtopic": "deep learning"})
     ]
-    
-    # Store the documents
-    chroma_storage.store_data(sample_docs)
-    
-    # Query the data
-    query_results = chroma_storage.query_data("NASDAQ stock")
-    print("Query Results:")
-    for result in query_results:
-        print(f"Content: {result['content']}")
-        print(f"Metadata: {result['metadata']}")
-        print(f"Score: {result['score']}")
-        print("---")
-    
-    # Get data by date range
-    start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end_date = datetime.now()
-    date_range_results = chroma_storage.get_data_by_date_range(start_date, end_date)
-    print("Date Range Results:")
-    for result in date_range_results:
-        print(f"Content: {result['content']}")
-        print(f"Metadata: {result['metadata']}")
-        print("---")
+
+    # Initialize the ChromaDBStorage with a specific storage location
+    saver = ChromaDBStorage("my_collection", persist_directory=chroma_directory)
+
+    # Save the documents
+    saver.save_documents(docs)
+
+    # Fetch documents about programming
+    programming_docs = saver.fetch_documents({"topic": "programming"})
+    print(f"Found {len(programming_docs)} documents about programming")
+
+    # Fetch documents about Python or AI
+    multi_filter_docs = saver.fetch_documents_by_multiple_metadata([
+        {"language": "Python"},
+        {"topic": "AI"}
+    ])
+    print(f"Found {len(multi_filter_docs)} documents about Python or AI")
