@@ -41,16 +41,18 @@ azure_config = {
 models=DottedDict()
 
 st.set_page_config(page_title="AI Stock Adviser", layout="wide")
+
+
 st.title("Karthikeyen Assignment - RAG Stock Analysis")
 
 st.markdown("""
 Please ask if now is a good time to buy or sell stocks of a company of your interest. 
 
-Note: For Demo purpose, historical data is available only for the below companies:
-    Apple Inc.,AAPL
-    Microsoft Corporation,MSFT
-    Amazon.com Inc.,AMZN
-    Alphabet Inc. (Google),GOOGL
+Note: For Demo purpose, historical data is available only for the below companies: \n
+ AAPL  - Apple Inc.,                
+ MSFT  - Microsoft Corporation,     
+ AMZN  - Amazon.com Inc.,           
+ GOOGL - Alphabet Inc. (Google)     
 
 """)
 
@@ -92,28 +94,6 @@ def create_models(azure_config):
     models.embedding_model=embedding_model 
     return models
 
-# def get_conversational_chain(llm):
-#     prompt_template = """
-#     Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in
-#     provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
-#     Context:\n {context}?\n
-#     Question: \n{question}\n
-
-#     Answer:
-#     """
-#     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-#     chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
-#     return chain
-
-# def generate_response(user_question, models):
-#     print("Question: ", user_question)
-#     new_db = FAISS.load_local("faiss_index", models.embedding_model, allow_dangerous_deserialization=True)
-#     docs = new_db.similarity_search(user_question)
-#     chain = get_conversational_chain()
-#     response = chain({"input_documents": docs, "question": user_question}, return_only_outputs=True)
-#     print(response)
-#     st.write("Reply: ", response["output_text"])
-
 def user_input(user_question):
     print("Question: ", user_question)
     
@@ -123,7 +103,7 @@ def user_input(user_question):
 
     User questions will begin with the token: ###Question.
 
-    Please finds the 'nasdaq company ticker' of the company in the question provoded.
+    Please find the 'nasdaq company ticker' of the company in the question provided.
     
     Response format:
     {nasdaq company ticker}
@@ -181,17 +161,30 @@ def user_input(user_question):
     The context contains references to specific portions of a document relevant to the user query.
 
     User questions will begin with the token: ###Question.
+    
+    First, find the 'nasdaq company ticker' of the related company in the question provided.
+    Your task is to perform sentiment analysis on the content part of each documents provided in the Context, which discuss a company identified by its 'nasdaq company ticker'. The goal is to determine the overall sentiment expressed across all documents and provide an overall justification. Based on the sentiment analysis, give a recommendation on whether the company’s stock should be purchased.
 
-    Please perform a sentiment analysis on the provided context to determine the sentiment percentages: Positive %, Neutral %, and Negative %. Based on these percentages, generate a response in the following format:
-    
-    If the context has relevent data:
-    The recent social media and news articles have a {accurate number in decimal}% {Positive/Negative/Neutral} view on the company ({Company name}, {nasdaq company ticker}). So {provide short advice if it is advisable to invest in the stock}.
-    
+    Step-by-Step Instructions:
+        1. Read the Context: Carefully read the content parts of each document provided in the list of Documents.
+        2. Determine Overall Sentiment: Analyze the sentiment across all documents and categorize the overall sentiment as Positive, Negative, or Neutral.
+        3. Provide Overall Justification: Summarize the key points from all documents to justify the overall sentiment.
+        4. Stock Advice: Based on the overall sentiment and justification, provide a recommendation on whether the company’s stock should be purchased.
+
+    Example Analysis:
+        Context: 
+            [Document(metadata={'platform': 'Google News', 'company': 'GOOGL', 'ingestion_timestamp': '2024-10-22T10:11:17.257275', 'word_count': 91}, page_content="{'title': 'Alphabet Inc. (GOOGL): Among the Most Owned Stocks by Hedge Funds Right Now - Insider Monkey', 'content': 'Alphabet Inc. (GOOGL): Among the Most Owned Stocks by Hedge Funds Right Now  Insider Monkey'}"),Document(metadata={'platform': 'Google News', 'company': 'GOOGL', 'ingestion_timestamp': '2024-10-22T10:11:17.257275', 'word_count': 59}, page_content="{'title': 'Here\'s Why Alphabet (GOOGL) is a Strong Momentum Stock - MSN', 'content': 'Here\'s Why Alphabet (GOOGL) is a Strong Momentum Stock  MSN'}")]
+
+    If the content parts of context has relevent data:
+        Overall Sentiment: Positive
+        Overall Justification: The Historical documents consistently present Alphabet Inc. (GOOGL) in a positive light. One highlights it as being highly owned by hedge funds, indicating institutional confidence, while the other describes it as a strong momentum stock, pointing to positive market performance expectations.
+        Stock Advice: Based on the positive sentiments expressed in the Historical documents, it is advisable to consider purchasing Alphabet Inc. (GOOGL) stock. The positive perceptions among hedge funds and the stock’s status as a strong momentum stock suggest potential for future success.
+   
     Else:
-    Respond "Company ({Company name}, {nasdaq company ticker}) details not found in the Historical Data".
+        Respond "Company {Company name}Alphabet Inc.(Google) {nasdaq company ticker}(GOOGL) details not found in the Historical Data".
     
-    Do not mention anything about the context in your final answer.
-
+    Please follow the steps and format illustrated above to analyze the sentiment of each document’s content, provide an overall sentiment, justification, and give stock purchase advice.
+    
     """
 
     qna_user_message_template = """
@@ -241,6 +234,8 @@ def main():
     if user_question:
         user_input(user_question)
 
+    with st.sidebar:
+        st.title("Realtime:")
     # with st.sidebar:
     #     st.title("Menu:")
     #     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True, key="pdf_uploader")
