@@ -107,7 +107,7 @@ def get_conversational_chain(llm):
 #     print(response)
 #     st.write("Reply: ", response["output_text"])
 
-def user_input(user_question, models):
+def user_input(user_question, models):  
     print("Question: ", user_question)
     new_db = FAISS.load_local("Assignment5/streamlit/faiss_index", models.embedding_model, allow_dangerous_deserialization=True)
     docs = new_db.similarity_search(user_question)
