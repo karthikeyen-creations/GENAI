@@ -41,39 +41,51 @@ azure_config = {
 models=DottedDict()
 
 st.set_page_config(page_title="AI Stock Adviser", layout="wide")
-
-
-st.title("Karthikeyen Assignment - RAG Stock Analysis")
-
+# Add custom CSS to improve the layout
 st.markdown("""
-Please ask if now is a good time to buy or sell stocks of a company of your interest. 
+    <style>
+    .main-header {
+        text-align: center;
+        padding-right: 20px;
+        padding-left: 20px;
+        color: #E9EBED;
+    }
+    .main-header2 {
+        text-align: left;
+        color: #E9EBED;
+    }
+    .column-header {
+        color: #FFFF9E;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+    }
+    .column-header2 {
+        color: #CEFFFF;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+    .content-section {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-Note: For Demo purpose, historical data is available only for the below companies: \n
+# Main title with custom styling
+st.markdown("<h1 class='main-header'>Karthikeyen Assignment - RAG Stock Analysis</h1>", unsafe_allow_html=True)
+st.markdown(""" <h4 class='main-header2'>
+Please ask if now is a good time to buy or sell stocks of a company of your interest. 
+\n \n
+Note: For Demo purpose, historical data is available only for the below companies: 
  AAPL  - Apple Inc.,                
  MSFT  - Microsoft Corporation,     
  AMZN  - Amazon.com Inc.,           
  GOOGL - Alphabet Inc. (Google)     
 
-""")
-
-
-# def get_pdf_text(pdf_docs):
-#     text = ""
-#     for pdf in pdf_docs:
-#         pdf_reader = PdfReader(pdf)
-#         for page in pdf_reader.pages:
-#             text += page.extract_text()
-#     return text
-
-# def get_text_chunks(text):
-#     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
-#     chunks = text_splitter.split_text(text)
-#     return chunks
-
-# def get_vector_store(text_chunks, models):
-#     embeddings = models.embedding_model
-#     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-#     vector_store.save_local("Assignment5/streamlit/faiss_index")
+</h4>""", 
+unsafe_allow_html=True)
 
 
 def create_models(azure_config):
@@ -174,7 +186,8 @@ def user_input(user_question):
     Example Analysis:
         Context: 
             [Document(metadata={'platform': 'Google News', 'company': 'GOOGL', 'ingestion_timestamp': '2024-10-22T10:11:17.257275', 'word_count': 91}, page_content="{'title': 'Alphabet Inc. (GOOGL): Among the Most Owned Stocks by Hedge Funds Right Now - Insider Monkey', 'content': 'Alphabet Inc. (GOOGL): Among the Most Owned Stocks by Hedge Funds Right Now  Insider Monkey'}"),Document(metadata={'platform': 'Google News', 'company': 'GOOGL', 'ingestion_timestamp': '2024-10-22T10:11:17.257275', 'word_count': 59}, page_content="{'title': 'Here\'s Why Alphabet (GOOGL) is a Strong Momentum Stock - MSN', 'content': 'Here\'s Why Alphabet (GOOGL) is a Strong Momentum Stock  MSN'}")]
-
+    
+    Response Format:
     If the content parts of context has relevent data:
         Overall Sentiment: Positive
         Overall Justification: The Historical documents consistently present Alphabet Inc. (GOOGL) in a positive light. One highlights it as being highly owned by hedge funds, indicating institutional confidence, while the other describes it as a strong momentum stock, pointing to positive market performance expectations.
@@ -183,7 +196,7 @@ def user_input(user_question):
     Else:
         Respond "Company {Company name}Alphabet Inc.(Google) {nasdaq company ticker}(GOOGL) details not found in the Historical Data".
     
-    Please follow the steps and format illustrated above to analyze the sentiment of each document’s content, provide an overall sentiment, justification, and give stock purchase advice.
+    Please follow the steps to analyze the sentiment of each document’s content; and exact structure illustrated in above example response to provide an overall sentiment, justification and give stock purchase advice. Provide only Overall response, don't provide documentwise response. Decorate the reponse with html/css tags.
     
     """
 
@@ -224,33 +237,97 @@ def user_input(user_question):
 
     
     print(prediction)
-    st.write("Reply: ", prediction)
+    sentiment=extract_between(prediction,"Overall Sentiment: ","Overall Justification:").strip()
+    if sentiment == "Positive":
+        st.success("Positive : Go Ahead...!")
+    elif sentiment == "Negative":
+        st.warning("Negative : Don't...!")
+    elif sentiment == "Neutral":
+        st.warning("Neutral : Need to Analyse further")
+    st.write( prediction, unsafe_allow_html=True)
+    
+def extract_between(text: str, start: str, end: str) -> str:
+    """
+    Extract substring between two delimiter strings.
+    
+    Args:
+        text (str): The source text to extract from
+        start (str): The starting delimiter string
+        end (str): The ending delimiter string
+    
+    Returns:
+        str: Extracted text between start and end delimiters
+             Returns empty string if delimiters not found or invalid input
+    
+    Examples:
+        >>> text = "Hello [world] Python"
+        >>> extract_between(text, "[", "]")
+        'world'
+    """
+    try:
+        # Find starting position
+        start_pos = text.find(start)
+        if start_pos == -1:
+            return ""
+        
+        # Adjust start position to end of start delimiter
+        start_pos += len(start)
+        
+        # Find ending position after start position
+        end_pos = text.find(end, start_pos)
+        if end_pos == -1:
+            return ""
+        
+        # Extract and return the text between delimiters
+        return text[start_pos:end_pos]
+        
+    except (AttributeError, TypeError):
+        return ""
 
 
 def main():
     st.header("Ask a question")
 
-    user_question = st.text_input("Ask a stock advise related question", key="user_question")
-    if user_question:
-        user_input(user_question)
+    user_question = st.text_input("Ask a stock advise related question", key="user_question",)
 
-    with st.sidebar:
-        st.title("Realtime:")
-    # with st.sidebar:
-    #     st.title("Menu:")
-    #     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True, key="pdf_uploader")
-    #     if st.button("Submit & Process", key="process_button"):  # Check if API key is provided before processing
-    #         with st.spinner("Processing..."):
-    #             raw_text = get_pdf_text(pdf_docs)
-    #             text_chunks = get_text_chunks(raw_text)
-    #             models=create_models(azure_config)
-    #             get_vector_store(text_chunks, models)
-    #             st.success("Done")
-    # with st.form("my_form"):
-    #     text = st.text_area("Enter text:", "How much is Vijay's experience?")
-    #     submitted = st.form_submit_button("Submit")
-    #     print(models)
-    #     #create_models(azure_config)
-    #     generate_response(text, models)
+    # Create two columns with equal width
+    col1, col2 = st.columns(2)
+
+    # First column content
+    with col1:
+        st.markdown("<h2 class='column-header'>From Historical Data</h2>", unsafe_allow_html=True)
+        
+        with st.container():
+            if user_question:
+                user_input(user_question)
+
+    # Second column content
+    with col2:
+        st.markdown("<h2 class='column-header'>From Real-Time Agent Replies</h2>", unsafe_allow_html=True)
+        
+        with st.container():
+            if user_question:
+                user_input(user_question)
+
+    # Add a footer
+    st.markdown("---")
+    st.markdown("<p style='text-align: center; color: #666;'>© 2024 EY</p>", 
+                unsafe_allow_html=True)
+        # with st.sidebar:
+        #     st.title("Menu:")
+        #     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True, key="pdf_uploader")
+        #     if st.button("Submit & Process", key="process_button"):  # Check if API key is provided before processing
+        #         with st.spinner("Processing..."):
+        #             raw_text = get_pdf_text(pdf_docs)
+        #             text_chunks = get_text_chunks(raw_text)
+        #             models=create_models(azure_config)
+        #             get_vector_store(text_chunks, models)
+        #             st.success("Done")
+        # with st.form("my_form"):
+        #     text = st.text_area("Enter text:", "How much is Vijay's experience?")
+        #     submitted = st.form_submit_button("Submit")
+        #     print(models)
+        #     #create_models(azure_config)
+        #     generate_response(text, models)
 if __name__ == "__main__":
     main()
