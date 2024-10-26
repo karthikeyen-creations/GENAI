@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from typing import Dict, List
 import pandas as pd
 import tweepy
 import praw
@@ -206,6 +207,29 @@ def collect_wsj(query, start_date, end_date):
     return articles
 
 
+def search_news(query: str, days: int = 14) -> List[Dict]:
+    """Search news using Serper API"""
+    headers = {
+        "X-API-KEY": os.getenv("SERPER_API_KEY"),
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "q": f"{query} company news",
+        "num": 500,
+        "dateRestrict": f"d{days}"
+    }
+    
+    response = requests.post(
+        "https://google.serper.dev/news",
+        headers=headers,
+        json=payload
+    )
+    
+    if response.status_code == 200:
+        return response.json().get("news", [])
+    return []
+
 def collect_social_media_and_news_data(company_list, start_date, end_date):
     # Set up API clients
     tumblr_client = pytumblr.TumblrRestClient(
@@ -239,6 +263,7 @@ def collect_social_media_and_news_data(company_list, start_date, end_date):
         bloomberg_data=[]
         reuters_data=[]
         wsj_data=[]
+        serper_data=[]
 
         # Social media data collection
         # twitter_data = collect_twitter_data(twitter_api, company, start_date, end_date)
@@ -260,7 +285,8 @@ def collect_social_media_and_news_data(company_list, start_date, end_date):
         reuters_data = collect_reuters(company, start_date, end_date)
         print("Collecting WSJ Data")
         wsj_data = collect_wsj(company, start_date, end_date)
-        
+        print("Collecting from Serper")
+        serper_data = search_news(company)
         
         # all_data.extend([
             # {"platform": "Twitter", "company": company, "data": item} for item in twitter_data
@@ -305,6 +331,11 @@ def collect_social_media_and_news_data(company_list, start_date, end_date):
             {"platform": "Wall Street Journal", "company": company, 
               "page_content": {"title":item["title"],
                                "content":item["description"]}} for item in wsj_data
+        ])
+        all_data.extend([
+            {"platform": item["source"], "company": company, 
+              "page_content": {"title":item["title"],
+                               "content":item["snippet"]}} for item in serper_data
         ])
     
     return all_data

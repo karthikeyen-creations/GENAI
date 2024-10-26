@@ -16,7 +16,7 @@ from langchain_community.vectorstores import FAISS
 
 warnings.filterwarnings("ignore")
 CHROMA_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "chroma_db")
-FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_index")
+# FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_index")
 tesla_10k_collection = 'tesla-10k-2019-to-2023'
 embedding_model = ""
 # embedding_model = SentenceTransformerEmbeddings(model_name='thenlper/gte-large')
@@ -60,8 +60,8 @@ class DBStorage:
             api_version=os.getenv("AZURE_OPENAI_EMBEDDING_API_VERSION"),
             azure_endpoint=os.getenv("AZURE_OPENAI_EMBEDDING_ENDPOINT")
         )
-        vector_store = FAISS.from_documents(chunks, embedding=embeddings)
-        vector_store.save_local(FAISS_DB_PATH)
+        return FAISS.from_documents(chunks, embedding=embeddings)
+        # vector_store.save_local(FAISS_DB_PATH)
         
     
     def load_embeddings(self):
@@ -81,7 +81,7 @@ class DBStorage:
         print(self.vector_store)
         # return self.vector_store
 
-    def load_vectors(self):
+    def load_vectors(self,FAISS_DB_PATH):
         embeddings = AzureOpenAIEmbeddings(
             model=os.getenv("AZURE_OPENAI_EMBEDDING_NAME"),
             api_key=os.getenv("AZURE_OPENAI_EMBEDDING_API_KEY"),
@@ -147,12 +147,14 @@ class DBStorage:
         
     #     return chain.invoke(question)
     
-    def embed_vectors(self,social_media_document):
+    def embed_vectors(self,social_media_document,FAISS_DB_PATH):
         print("here A")
         chunks = self.chunk_data(social_media_document)
         print(len(chunks))
         # self.create_embeddings(chunks)
-        self.create_vector_store(chunks)
+        vector_store = self.create_vector_store(chunks)
+        check_and_delete(FAISS_DB_PATH)
+        vector_store.save_local(FAISS_DB_PATH)
 
 def check_and_delete(PATH):
     if os.path.isdir(PATH):
@@ -161,7 +163,7 @@ def check_and_delete(PATH):
     
 def clear_db():
     check_and_delete(CHROMA_DB_PATH)
-    check_and_delete(FAISS_DB_PATH)
+    # check_and_delete(FAISS_DB_PATH)
 
 
 # Usage example

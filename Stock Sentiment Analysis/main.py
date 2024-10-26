@@ -1,19 +1,23 @@
 import warnings
-from py.daily_fetch import * 
+from py.data_fetch import * 
 from py.handle_files import *
 from py.db_storage import *
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from typing import List, Dict, Any
-
 warnings.filterwarnings("ignore")
 
-# # Collect Data    
-# social_media_data = collect_social_media_and_news_data(get_company_list(), get_start_date(), get_end_date())
+stock="nse"
+# stock="nasdaq"
 
-# # Save collected data to Files
-# create_files(social_media_data)
+# Collect Data    
+data_fetch = DataFetch()
+data_fetch.load_company_list("Stock Sentiment Analysis/Resources/"+stock+"_companies.csv")
+social_media_data = data_fetch.collect_data()
+
+# Save collected data to Files
+create_files(social_media_data)
 
 # Fetch saved Social Media Data
 social_media_document = fetch_social_media_data()
@@ -30,7 +34,8 @@ clear_db()
 chroma_db = DBStorage()
 
 # Create chunks and embeddings in the database
-chroma_db.embed_vectors(social_media_document_samples)
+FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_HD")
+chroma_db.embed_vectors(social_media_document_samples, FAISS_DB_PATH)
 
 
         

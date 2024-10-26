@@ -89,3 +89,15 @@ def sample_documents(documents: List[Document], n: int) -> List[Document]:
 
     # Flatten the dictionary into a single list
     return [doc for docs in sampled_docs.values() for doc in docs]
+
+def to_documents(data) -> List[Document]:
+    social_media_document = []
+    for item in data:
+        social_media_document.append(Document(
+            page_content=str(item["page_content"]), 
+            metadata={"platform":item["platform"],
+                        "company":item["company"],
+                        "ingestion_timestamp":datetime.now().isoformat(),
+                        "word_count":len(item["page_content"]["content"])
+                        }))
+    return social_media_document

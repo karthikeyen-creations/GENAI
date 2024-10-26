@@ -167,3 +167,5 @@ faiss_index/
 /Assignment6/Assign6-RAG-PDF-Chat
 .env
 /cardiffnlp
+/Stock Sentiment Analysis/faiss_HD
+/Stock Sentiment Analysis/faiss_RD
