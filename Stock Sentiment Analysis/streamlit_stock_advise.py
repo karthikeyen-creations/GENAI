@@ -177,6 +177,9 @@ class StockAdviser:
         data_fetch = DataFetch()
         query_context = []
         
+        # Create a placeholder for the current source
+        source_status = st.empty()
+        
         # Collect data from various sources
         data_sources = [
             ("Reddit", data_fetch.collect_reddit_data),
@@ -187,11 +190,17 @@ class StockAdviser:
             ("Bloomberg", data_fetch.collect_bloomberg),
             ("Reuters", data_fetch.collect_reuters)
         ]
+        
+        st_status = ""
 
         for source_name, collect_func in data_sources:
+            st_status = st_status.replace("Currently fetching", "Fetched") + f"📡 Currently fetching data from: {source_name} \n \n"
+            source_status.write(st_status, unsafe_allow_html=True)
             print(f"Collecting {source_name} Data")
             query_context.extend(collect_func(cmp_tr))
 
+        st_status = st_status.replace("Currently fetching", "Fetched") +  "📡 Currently fetching data from: Serper - StockNews, Yahoo Finance, Insider Monkey, Investor's Business Daily, etc."
+        source_status.write(st_status, unsafe_allow_html=True)
         print("Collecting Serper Data")
         query_context.extend(data_fetch.search_news(cmp_tr, 100))
 
@@ -205,6 +214,10 @@ class StockAdviser:
         
         sentiment_response = self._get_sentiment_analysis(context_for_query, cmp_tr, is_realtime=True)
         self._display_sentiment(sentiment_response)
+        
+        # Clear the status message after all sources are processed
+        source_status.empty()
+
 
     def _get_sentiment_analysis(self, context, cmp_tr, is_realtime=False):
         system_message = self._get_system_prompt(is_realtime)
