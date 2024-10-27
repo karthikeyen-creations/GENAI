@@ -76,7 +76,7 @@ class StockAdviserUI:
     def _setup_header(self):
         st.markdown("<h1 class='main-header'>Karthikeyen Assignment - RAG Stock Analysis</h1>", unsafe_allow_html=True)
         st.markdown(""" <h4 class='main-header2'>
-            Please ask if now is a good time to buy or sell stocks of a company of your interest. 
+            Please ask if now is a good time to buy or sell NSE stocks of a company of your interest. 
             \n \n
             Note: For Demo purpose, historical data is available only for the below companies:   
             Reliance Industries,RELIANCE
