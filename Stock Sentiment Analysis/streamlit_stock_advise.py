@@ -37,7 +37,7 @@ class StockAdviserConfig:
 
 class StockAdviserUI:
     def __init__(self):
-        st.set_page_config(page_title="AI Stock Adviser", layout="wide")
+        st.set_page_config(page_title="GEN AI Stock Adviser by Karthikeyen", layout="wide")
         self._setup_css()
         self._setup_header()
 
