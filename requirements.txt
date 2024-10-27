@@ -38,3 +38,6 @@ gnews
 bs4
 requests
 certifi
+plotly
+pandas_datareader
+yfinance
