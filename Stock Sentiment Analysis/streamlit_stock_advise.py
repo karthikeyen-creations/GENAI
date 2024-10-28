@@ -250,12 +250,14 @@ class StockAdviser:
         return cmp_tkr
 
 
-    def process_historical_data(self, user_question):
+    def process_historical_data(self, user_question, hugg = False):
         cmp_tr = self.get_symbol(user_question)
         
         # Initialize ChromaDB Database
-        chroma_db = DBStorage()
+        chroma_db = DBStorage(hugg)
         FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_HD")
+        if hugg:
+            FAISS_DB_PATH = os.path.join(os.getcwd(), "faiss_HD")
         chroma_db.load_vectors(FAISS_DB_PATH)
         context_for_query = chroma_db.get_context_for_query(cmp_tr, k=5)
         
@@ -272,44 +274,54 @@ class StockAdviser:
         print(f"\nFetching {days} days of stock data for {cmp_tr}...")
         df, analysis = self.get_nse_stock_data(cmp_tr, days)
         
-        print(analysis)
+        print("df,analysis")
+        print(len(df))
+        print(len(analysis))
         
-        # Create metrics cards
-        col1, col2, col3 = st.columns(3)
-        
-        # Simulate some metric data (replace with real data in production)
-        with col1:
-            self._create_metric_card(f"52-Week High on {analysis['week_52_high_date']}", 
-                                     f"₹{analysis['week_52_high']:,.2f}", 
-                                     self.format_percentage(analysis['pct_from_52w_high']))
-        with col2:
-            self._create_metric_card(f"52-Week Low on {analysis['week_52_low_date']}",  
-                                     f"₹{analysis['week_52_low']:,.2f}", 
-                                     self.format_percentage(analysis['pct_from_52w_low']))
-        with col3:
-            self._create_metric_card("Average Volume", 
-                                     f"{int(analysis['avg_volume']):,}", 
-                                     f"{self.format_percentage(analysis['volume_pct_diff'])}")
+        if len(analysis) != 0:
+            # Create metrics cards
+            
+            col0, col1, col2, col3 = st.columns(4)
+            # Simulate some metric data (replace with real data in production)\
+            with col0:
+                st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-title">current price & volume</div>
+                        <div class="metric-value">₹{analysis['current_price']:,}</div>
+                        <div>{int(analysis['current_volume']):,}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            with col1:
+                self._create_metric_card(f"52-Week High on {analysis['week_52_high_date']}", 
+                                        f"₹{analysis['week_52_high']:,.2f}", 
+                                        self.format_percentage(analysis['pct_from_52w_high']))
+            with col2:
+                self._create_metric_card(f"52-Week Low on {analysis['week_52_low_date']}",  
+                                        f"₹{analysis['week_52_low']:,.2f}", 
+                                        self.format_percentage(analysis['pct_from_52w_low']))
+            with col3:
+                self._create_metric_card("Average Volume", 
+                                        f"{int(analysis['avg_volume']):,}", 
+                                        f"{self.format_percentage(analysis['volume_pct_diff'])}")
+                    
+            # Display price chart
+            st.plotly_chart(self.visualizer.create_price_chart(df, cmp_tr))
+            
+            # Display volume chart
+            st.plotly_chart(self.visualizer.create_volume_chart(df, cmp_tr))
+            
+            # Display sentiment gauge (simulate sentiment score)
+            # Generating random score for Demo purpose
+            if sentiment == "Negative":
+                sentiment_score = np.random.uniform(-1, -0.75)
+            elif sentiment == "Neutral":
+                sentiment_score = np.random.uniform(-0.75, 0.25)
+            elif sentiment == "Positive":
+                sentiment_score = np.random.uniform(0.25, 1)
+            else:
+                sentiment_score = 0
                 
-        # Display price chart
-        st.plotly_chart(self.visualizer.create_price_chart(df, cmp_tr))
-        
-        # Display volume chart
-        st.plotly_chart(self.visualizer.create_volume_chart(df, cmp_tr))
-        
-        # Display sentiment gauge (simulate sentiment score)
-        # Generating random score for Demo purpose
-        if sentiment == "Negative":
-            sentiment_score = np.random.uniform(-1, -0.75)
-        elif sentiment == "Neutral":
-            sentiment_score = np.random.uniform(-0.75, 0.25)
-        elif sentiment == "Positive":
-            sentiment_score = np.random.uniform(0.25, 1)
-        else:
-            sentiment_score = 0
-            
-            
-        st.plotly_chart(self.visualizer.create_sentiment_gauge(sentiment_score))
+            st.plotly_chart(self.visualizer.create_sentiment_gauge(sentiment_score))
     
     def get_nse_stock_data(self,symbol, days):
         """
@@ -392,14 +404,14 @@ class StockAdviser:
         
         except Exception as e:
             print(f"Error fetching data: {str(e)}")
-            return None, None
+            return [], []
 
     def format_percentage(self, value):
         """Format percentage with + or - sign"""
         return f"+{value:.2f}%" if value > 0 else f"{value:.2f}%"
 
 
-    def process_realtime_data(self, cmp_tr):
+    def process_realtime_data(self, cmp_tr, hugg = False):
         if cmp_tr == "NOTICKER":
             st.write("No valid company in the query.")
             return
@@ -435,8 +447,12 @@ class StockAdviser:
         query_context.extend(data_fetch.search_news(cmp_tr, 100))
 
         # Process collected data
-        db_store = DBStorage()
+        db_store = DBStorage(hugg)
         FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_RD")
+        
+        if hugg:
+            FAISS_DB_PATH = os.path.join(os.getcwd(), "faiss_RD")
+            
         db_store.embed_vectors(to_documents(query_context), FAISS_DB_PATH)
         
         db_store.load_vectors(FAISS_DB_PATH)
@@ -578,7 +594,7 @@ class StockAdviser:
         return base_prompt + response_format + common_format
 
 
-def main():
+def main(hugg):
     adviser = StockAdviser()
     
 
@@ -630,13 +646,13 @@ def main():
         st.markdown("<h2 class='column-header'>Historical Analysis</h2>", unsafe_allow_html=True)
         with st.container():
             if user_question:
-                cmp_tr = adviser.process_historical_data(user_question)
+                cmp_tr = adviser.process_historical_data(user_question, hugg)
 
     with col2:
         st.markdown("<h2 class='column-header'>Real-Time Analysis</h2>", unsafe_allow_html=True)
         with st.container():
             if user_question:
-                sentiment_response = adviser.process_realtime_data(cmp_tr)
+                sentiment_response = adviser.process_realtime_data(cmp_tr, hugg)
       
     if (str(cmp_tr) is not "NOTICKER"):            
         with st.container():
@@ -647,4 +663,5 @@ def main():
     st.markdown("<p style='text-align: center; color: #666;'>© 2024 EY</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main()
+    hugg = False
+    main(hugg)

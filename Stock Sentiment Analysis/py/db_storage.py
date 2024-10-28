@@ -16,17 +16,25 @@ from langchain_community.vectorstores import FAISS
 
 warnings.filterwarnings("ignore")
 CHROMA_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "chroma_db")
+CHROMA_DB_PATHH = os.path.join(os.getcwd(), "chroma_db")
 # FAISS_DB_PATH = os.path.join(os.getcwd(), "Stock Sentiment Analysis", "faiss_index")
 tesla_10k_collection = 'tesla-10k-2019-to-2023'
 embedding_model = ""
 # embedding_model = SentenceTransformerEmbeddings(model_name='thenlper/gte-large')
 
+def clear_db(hugg = False):
+    check_and_delete(CHROMA_DB_PATH)
+    if hugg:
+        check_and_delete(CHROMA_DB_PATHH)
+    # check_and_delete(FAISS_DB_PATH)
 
 class DBStorage:
-    def __init__(self):
+    def __init__(self, hugg = False):
         self.CHROMA_PATH = CHROMA_DB_PATH
+        if hugg:
+            self.CHROMA_PATH = CHROMA_DB_PATHH
         self.vector_store = None
-        self.client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+        self.client = chromadb.PersistentClient(path=self.CHROMA_PATH)
         print(self.client.list_collections())
         self.collection = self.client.get_or_create_collection(name=tesla_10k_collection)
         print(self.collection.count())
@@ -73,7 +81,7 @@ class DBStorage:
         )
 
         self.vector_store = Chroma(collection_name=tesla_10k_collection, 
-                                   persist_directory=CHROMA_DB_PATH, 
+                                   persist_directory=self.CHROMA_PATH, 
                                 #    embedding_function=embeddings
                                    embedding_function=embedding_model
                                    )
@@ -161,9 +169,6 @@ def check_and_delete(PATH):
         shutil.rmtree(PATH, onexc=lambda func, path, exc: os.chmod(path, 0o777))
         print(f'Deleted {PATH}')
     
-def clear_db():
-    check_and_delete(CHROMA_DB_PATH)
-    # check_and_delete(FAISS_DB_PATH)
 
 
 # Usage example

@@ -8,8 +8,10 @@ from typing import List
 from langchain.schema import Document
 import pandas as pd
 
-def create_files(social_media_data):
+def create_files(social_media_data, hugg = False):
     folder_path = 'Stock Sentiment Analysis/files'
+    if hugg:
+        folder_path = 'files'
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -28,8 +30,11 @@ def create_files(social_media_data):
         
     df.to_pickle(folder_path+"/social_media_data.pkl")
 
-def fetch_social_media_data():
-        with open('Stock Sentiment Analysis/files/social_media_data.json', 'r') as file:
+def fetch_social_media_data(hugg = False):
+        file_path = 'Stock Sentiment Analysis/files/social_media_data.json'
+        if hugg:
+            file_path = 'files/social_media_data.json'
+        with open(file_path, 'r') as file:
             data = json.load(file)
         social_media_document = []
         for item in data:
