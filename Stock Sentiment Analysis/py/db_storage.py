@@ -164,9 +164,13 @@ class DBStorage:
         check_and_delete(FAISS_DB_PATH)
         vector_store.save_local(FAISS_DB_PATH)
 
-def check_and_delete(PATH):
+def check_and_delete(PATH, hugg=False):
     if os.path.isdir(PATH):
-        shutil.rmtree(PATH, onexc=lambda func, path, exc: os.chmod(path, 0o777))
+        if hugg:
+            shutil.rmtree(PATH)
+        else:
+            shutil.rmtree(PATH, onexc=lambda func, path, exc: os.chmod(path, 0o777))
+            
         print(f'Deleted {PATH}')
     
 
