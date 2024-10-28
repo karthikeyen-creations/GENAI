@@ -30,8 +30,9 @@ def clear_db(hugg = False):
 
 class DBStorage:
     def __init__(self, hugg = False):
+        self.hugg = hugg    
         self.CHROMA_PATH = CHROMA_DB_PATH
-        if hugg:
+        if self.hugg:
             self.CHROMA_PATH = CHROMA_DB_PATHH
         self.vector_store = None
         self.client = chromadb.PersistentClient(path=self.CHROMA_PATH)
@@ -161,7 +162,7 @@ class DBStorage:
         print(len(chunks))
         # self.create_embeddings(chunks)
         vector_store = self.create_vector_store(chunks)
-        check_and_delete(FAISS_DB_PATH)
+        check_and_delete(FAISS_DB_PATH, self.hugg)
         vector_store.save_local(FAISS_DB_PATH)
 
 def check_and_delete(PATH, hugg=False):
