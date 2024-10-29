@@ -58,8 +58,8 @@ class StockAdviserUI:
             }
             .little-header {
                 # text-align: center;
-                padding-right: 20px;
-                padding-left: 20px;
+                # padding-right: 20px;
+                # padding-left: 20px;
                 color: #E9EBED;
                 # margin-bottom: 2rem;
             }
@@ -693,6 +693,6 @@ def main(hugg):
     st.markdown("<p style='text-align: center; color: #666;'>© 2024 EY</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    hugg = True
-    hugg = False
+    hugg = os.getenv("IS_HUGG") == "True"
+    print(hugg)
     main(hugg)
