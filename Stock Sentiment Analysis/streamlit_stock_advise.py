@@ -296,9 +296,13 @@ class StockAdviser:
         )
 
         print (initial_response)
-        function_name = initial_response.choices[0].message.function_call.name
-        function_argument = json.loads(initial_response.choices[0].message.function_call.arguments)
-        company= function_argument['company']
+        if str(initial_response.choices[0].message.function_call) == "None":
+            function_name = "get_none" 
+            company= "NOTICKER"
+        else:
+            function_name = initial_response.choices[0].message.function_call.name
+            function_argument = json.loads(initial_response.choices[0].message.function_call.arguments)
+            company= function_argument['company']
         print(function_name)
         print(company)
         return function_name
