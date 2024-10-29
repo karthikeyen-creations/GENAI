@@ -24,7 +24,7 @@ social_media_document = fetch_social_media_data()
 print(len(social_media_document))
 
 # Samples `n` entries for each unique `"platform"` and `"company"` metadata combination from the input `Document[]`.
-social_media_document_samples = sample_documents(social_media_document, 20)
+social_media_document_samples = sample_documents(social_media_document, 30)
 print(len(social_media_document_samples))
 
 # Delete and clear any ChromaDB databases

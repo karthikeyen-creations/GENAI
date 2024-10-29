@@ -43,7 +43,8 @@ def fetch_social_media_data(hugg = False):
                 metadata={"platform":item["platform"],
                           "company":item["company"],
                           "ingestion_timestamp":datetime.now().isoformat(),
-                          "word_count":len(item["page_content"]["content"])
+                          "word_count":len(item["page_content"]["content"]),
+                          "link":item["link"] if "link" in item else ""
                           }))
         return social_media_document
         
@@ -103,6 +104,7 @@ def to_documents(data) -> List[Document]:
             metadata={"platform":item["platform"],
                         "company":item["company"],
                         "ingestion_timestamp":datetime.now().isoformat(),
-                        "word_count":len(item["page_content"]["content"])
+                        "word_count":len(item["page_content"]["content"]),
+                        "link": item["link"] if "link" in item else ""
                         }))
     return social_media_document

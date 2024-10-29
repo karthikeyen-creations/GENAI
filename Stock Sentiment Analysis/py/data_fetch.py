@@ -225,7 +225,8 @@ class DataFetch:
             for result in results:
                 articles.append({"platform": result["source"], "company": query, "page_content": {
                     "title": result["title"],
-                    "content": result["snippet"]
+                    "content": result["snippet"],
+                    "link": result["link"]
                 }})
         return articles
 

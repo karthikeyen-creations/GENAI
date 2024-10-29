@@ -54,7 +54,14 @@ class StockAdviserUI:
                 padding-right: 20px;
                 padding-left: 20px;
                 color: #E9EBED;
-                margin-bottom: 2rem;
+                # margin-bottom: 2rem;
+            }
+            .little-header {
+                # text-align: center;
+                padding-right: 20px;
+                padding-left: 20px;
+                color: #E9EBED;
+                # margin-bottom: 2rem;
             }
             .main-header2 {
                 text-align: left;
@@ -98,7 +105,8 @@ class StockAdviserUI:
             """, unsafe_allow_html=True)
 
     def _setup_header(self):
-        st.markdown("<h1 class='main-header'>RAG Stock Analysis</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 class='main-header'>Stock Analysis with Generative AI</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 class='main-header'>using RAG</h3>", unsafe_allow_html=True)
         with st.expander("Available Historical Demo Companies"):
             st.markdown("""
                 For Demo purpose, historical data is available only for the below companies:
@@ -479,10 +487,10 @@ class StockAdviser:
         """, unsafe_allow_html=True)
 
     def _get_sentiment_analysis(self, context, cmp_tr, is_realtime=False):
-        system_message = self._get_system_prompt(is_realtime)
+        system_message, dcument = self._get_system_prompt(is_realtime)
         user_message = f"""
         ###Context
-        Here are some documents that are relevant to the question mentioned below.
+        Here are some list of {dcument} that are relevant to the question mentioned below.
         {context}
 
         ###Question
@@ -500,7 +508,7 @@ class StockAdviser:
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            return f'Sorry, I encountered the following error: \n {e}'
+            return f'Sorry, I encountered the following error: \n {e}', ""
 
     def _display_sentiment(self, prediction):
         sentiment = self._extract_between(prediction, "Overall Sentiment:", "Overall Justification:").strip()
@@ -539,59 +547,81 @@ class StockAdviser:
         Returns:
             str: The complete system prompt for the sentiment analysis
         """
-        base_prompt = """
+        
+        if is_realtime:
+            response_format = """
+                Response Formats:
+                Only If the Question is 'NOTICKER':
+                    No valid company in the query.
+                
+                Else, If the context does not have relevent data for the company:
+                    Respond "Company {Company name} {nse company symbol}({symbol}) details not found in the RealTime Data".
+                """
+            citation_format = """
+                Citations: [Generate few citations based on the links provided. Mention Source ('platform') and Title('title'), linking them with url from corresponding 'link' ]
+                """
+            instr2 = """
+            Stricktly Never mention 'document'/'documents', not even once. Instead mention it as 'Real-Time Social media and News data'
+            """
+            
+            dcument = "Real-Time Social media and News data"
+            dcuments = "List of 'Real-Time Social media and News data'"
+        else:
+            response_format = """
+                Response Formats:
+                If the Question value is "NOTICKER":
+                    No valid company in the query.
+                
+                If the context does not have relevent data for the company (Question value):
+                    Respond "Company {Company name} {nse company symbol}({symbol}) details not found in the Historical Data".
+                """
+            citation_format = ""
+                        
+            instr2 = """
+            Never mention 'document'/'documents', not even once. Instead mention it as 'Historical Social media and News data'
+            """
+            
+            dcument = "Historical Social media and News data"
+            dcuments = "List of 'Historical Social media and News data'"
+
+        instr = f"""
+        Please follow the steps to analyze the sentiment of each {dcument}'s content; and strictly follow exact structure illustrated in above example response to provide an overall sentiment, justification and give stock purchase advice. Provide only Overall response, don't provide documentwise response or any note. Decorate the response with html/css tags.
+        """
+        common_format = f"""
+        else, If the content parts of context has relevent data:
+        Overall Sentiment: [Positive/Negative/Neutral]  <line break>
+        Overall Justification: [Detailed analysis of why the sentiment was chosen, summarizing key points from the {dcuments}]  <line break>
+        Stock Advice: [Clear recommendation on whether to purchase the stock, based on the sentiment analysis and justification]
+        """
+        
+        base_prompt = f"""
         You are an assistant to a financial services firm who answers user queries on Stock Investments.
         User input will have the context required by you to answer user questions.
         This context will begin with the token: ###Context.
-        The context contains references to specific portions of a document relevant to the user query.
+        The context contains references to specific portions of a {dcument} relevant to the user query.
+        Each document is a {dcument}.
 
         User questions will begin with the token: ###Question.
         
         First, find the 'nse company symbol' of the related company in the question provided.
-        Your task is to perform sentiment analysis on the content part of each documents provided in the Context, which discuss a company identified by its 'nse company symbol'. The goal is to determine the overall sentiment expressed across all documents and provide an overall justification. Based on the sentiment analysis, give a recommendation on whether the company's stock should be purchased.
+        Your task is to perform sentiment analysis on the content part of each {dcuments} provided in the Context, which discuss a company identified by its 'nse company symbol'. The goal is to determine the overall sentiment expressed across all {dcuments} and provide an overall justification. Based on the sentiment analysis, give a recommendation on whether the company's stock should be purchased.
 
         Step-by-Step Instructions:
             1. See if the question is "NOTICKER". If so, give response and don't proceed.
             2. If the company in question is not found in the context, give the corresponding response and don't proceed.
-            3. Read the Context: Carefully read the content parts of each document provided in the list of Documents.
-            4. Determine Overall Sentiment: Analyze the sentiment across all documents and categorize the overall sentiment as Positive, Negative, or Neutral.
-            5. Provide Overall Justification: Summarize the key points from all documents to justify the overall sentiment.
+            3. Read the Context: Carefully read the content parts of each {dcument} provided in the list of {dcuments}.
+            4. Determine Overall Sentiment: Analyze the sentiment across all {dcuments} and categorize the overall sentiment as Positive, Negative, or Neutral.
+            5. Provide Overall Justification: Summarize the key points from all {dcuments} to justify the overall sentiment.
             6. Stock Advice: Based on the overall sentiment and justification, provide a recommendation on whether the company's stock should be purchased.
-
+        """
+        example_analysis = """
         Example Analysis:
             Context: 
                 [Document(metadata={'platform': 'Moneycontrol', 'company': 'ASIANPAINT', 'ingestion_timestamp': '2024-10-25T17:13:42.970099', 'word_count': 134}, page_content="{'title': 'Asian Paints launches Neo Bharat Latex Paint to tap on booming demand', 'content': 'The company, which is the leading player in India, touts the new segment to being affordable, offering over 1000 shades for consumers.'}"), Document(metadata={'platform': 'MarketsMojo', 'company': 'ASIANPAINT', 'ingestion_timestamp': '2024-10-25T17:13:42.970099', 'word_count': 128}, page_content="{'title': 'Asian Paints Ltd. Stock Performance Shows Positive Trend, Outperforms Sector by 0.9%', 'content': 'Asian Paints Ltd., a leading player in the paints industry, has seen a positive trend in its stock performance on July 10, 2024.'}"), Document(metadata={'platform': 'Business Standard', 'company': 'ASIANPAINT', 'ingestion_timestamp': '2024-10-25T17:13:42.970099', 'word_count': 138}, page_content="{'title': 'Asian Paints, Indigo Paints, Kansai gain up to 5% on falling oil prices', 'content': 'Shares of paint companies were trading higher on Wednesday, rising up to 5 per cent on the BSE, on the back of a fall in crude oil prices.'}")]
         """
 
-        if is_realtime:
-            response_format = """
-        Response Formats:
-        Only If the Question is 'NOTICKER':
-            No valid company in the query.
-        
-        Else, If the context does not have relevent data for the company:
-            Respond "Company {Company name} {nse company symbol}({symbol}) details not found in the RealTime Data".
-        """
-        else:
-            response_format = """
-        Response Formats:
-        If the Question value is "NOTICKER":
-            No valid company in the query.
-        
-        If the context does not have relevent data for the company (Question value):
-            Respond "Company {Company name} {nse company symbol}({symbol}) details not found in the Historical Data".
-        """
 
-        common_format = """
-        else, If the content parts of context has relevent data:
-        Overall Sentiment: [Positive/Negative/Neutral]  <line break>
-        Overall Justification: [Detailed analysis of why the sentiment was chosen, summarizing key points from the documents]  <line break>
-        Stock Advice: [Clear recommendation on whether to purchase the stock, based on the sentiment analysis and justification]
-        
-        Please follow the steps to analyze the sentiment of each document's content; and strictly follow exact structure illustrated in above example response to provide an overall sentiment, justification and give stock purchase advice. Provide only Overall response, don't provide documentwise response or any note. Decorate the response with html/css tags.
-        """
-
-        return base_prompt + response_format + common_format
+        return base_prompt + example_analysis + response_format + common_format + citation_format + instr + instr2, dcument
 
 
 def main(hugg):
@@ -643,18 +673,18 @@ def main(hugg):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("<h2 class='column-header'>Historical Analysis</h2>", unsafe_allow_html=True)
-        with st.container():
-            if user_question:
+        if user_question:
+            st.markdown("<h3 class='little-header'>Historical Analysis</h3>", unsafe_allow_html=True)
+            with st.container():
                 cmp_tr = adviser.process_historical_data(user_question, hugg)
 
     with col2:
-        st.markdown("<h2 class='column-header'>Real-Time Analysis</h2>", unsafe_allow_html=True)
-        with st.container():
-            if user_question:
+        if user_question:
+            st.markdown("<h3 class='little-header'>Real-Time Analysis</h3>", unsafe_allow_html=True)
+            with st.container():
                 sentiment_response = adviser.process_realtime_data(cmp_tr, hugg)
       
-    if (str(cmp_tr) is not "NOTICKER"):            
+    if (str(cmp_tr) != "NOTICKER"):            
         with st.container():
             if user_question:
                 adviser.display_charts(cmp_tr,sentiment_response)
@@ -663,5 +693,6 @@ def main(hugg):
     st.markdown("<p style='text-align: center; color: #666;'>© 2024 EY</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
+    hugg = True
     hugg = False
     main(hugg)
