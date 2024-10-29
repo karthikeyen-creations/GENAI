@@ -106,7 +106,7 @@ class StockAdviserUI:
 
     def _setup_header(self):
         st.markdown("<h1 class='main-header'>Stock Analysis with Generative AI</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 class='main-header'>using RAG</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='main-header'>using Agents and RAG</h3>", unsafe_allow_html=True)
         with st.expander("Available Historical Demo Companies"):
             st.markdown("""
                 For Demo purpose, historical data is available only for the below companies:
@@ -219,6 +219,91 @@ class StockAdviser:
         self.config.models.embedding_model = embedding_model
         return self.config.models
 
+    def stock_agent(self, user_question):
+        functions=[
+                {
+                    "name":"get_advise",
+                    "description":"Get only advise on a NSE stock",
+                    "parameters":{
+                        "type":"object",
+                        "properties":{
+                            "company":{
+                                "type":"string",
+                                "description":"Please find the 'nse company symbol' of the company in the question provided. In case of an invalid company, return 'NOTICKER'.",
+                            },
+                            
+                        },
+                        "required":["company"]
+                    },
+                },
+                {
+                    "name":"get_stats",
+                    "description":"Get only statistics/status on a NSE stock",
+                    "parameters":{
+                        "type":"object",
+                        "properties":{
+                            "company":{
+                                "type":"string",
+                                "description":"Please find the 'nse company symbol' of the company in the question provided. In case of an invalid company, return 'NOTICKER'.",
+                            },
+                            
+                        },
+                        "required":["company"]
+                    },
+                },
+                {
+                    "name":"get_adv_stats",
+                    "description":"Get both advise and statistics/status on a NSE stock",
+                    "parameters":{
+                        "type":"object",
+                        "properties":{
+                            "company":{
+                                "type":"string",
+                                "description":"Please find the 'nse company symbol' of the company in the question provided. In case of an invalid company, return 'NOTICKER'.",
+                            },
+                            
+                        },
+                        "required":["company"]
+                    },
+                },
+                {
+                    "name":"get_none",
+                    "description":"Get details other than advise or statistics/status on a NSE stock",
+                    "parameters":{
+                        "type":"object",
+                        "properties":{
+                            "company":{
+                                "type":"string",
+                                "description":"""
+                                For any queries other than advise or statistics/status on a NSE stock, only return "NOTICKER".
+                                """,
+                            },
+                            
+                        },
+                        "required":["company"]
+                    },
+                }
+            ] 
+
+        
+        initial_response = self.client.chat.completions.create(
+            model=self.config.azure_config["model_deployment"],
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant to understand the context of input query on NSE stock advise and statistics."},
+                {"role": "user", "content": user_question}
+            ],
+        functions=functions
+        )
+
+        print (initial_response)
+        function_name = initial_response.choices[0].message.function_call.name
+        function_argument = json.loads(initial_response.choices[0].message.function_call.arguments)
+        company= function_argument['company']
+        print(function_name)
+        print(company)
+        return function_name
+
+    
     def get_symbol(self, user_question):
         qna_system_message = """
         You are an assistant to a financial services firm who finds the 'nse company symbol' (assigned to the company in the provided stock market)) of the company in the question provided.
@@ -258,8 +343,7 @@ class StockAdviser:
         return cmp_tkr
 
 
-    def process_historical_data(self, user_question, hugg = False):
-        cmp_tr = self.get_symbol(user_question)
+    def process_historical_data(self, cmp_tr, hugg = False):
         
         # Initialize ChromaDB Database
         chroma_db = DBStorage(hugg)
@@ -274,8 +358,7 @@ class StockAdviser:
         
         return cmp_tr
     
-    def display_charts(self,cmp_tr,sentiment_response):
-        sentiment = self._extract_between(sentiment_response, "Overall Sentiment:", "Overall Justification:").strip()
+    def display_charts(self,cmp_tr,sentiment_response="none"):
         
         days = 365
         
@@ -318,18 +401,21 @@ class StockAdviser:
             # Display volume chart
             st.plotly_chart(self.visualizer.create_volume_chart(df, cmp_tr))
             
-            # Display sentiment gauge (simulate sentiment score)
-            # Generating random score for Demo purpose
-            if sentiment == "Negative":
-                sentiment_score = np.random.uniform(-1, -0.75)
-            elif sentiment == "Neutral":
-                sentiment_score = np.random.uniform(-0.75, 0.25)
-            elif sentiment == "Positive":
-                sentiment_score = np.random.uniform(0.25, 1)
-            else:
-                sentiment_score = 0
-                
-            st.plotly_chart(self.visualizer.create_sentiment_gauge(sentiment_score))
+            if sentiment_response != "none":
+                sentiment = self._extract_between(sentiment_response, "Overall Sentiment:", "Overall Justification:").strip()
+            
+                # Display sentiment gauge (simulate sentiment score)
+                # Generating random score for Demo purpose
+                if sentiment == "Negative":
+                    sentiment_score = np.random.uniform(-1, -0.75)
+                elif sentiment == "Neutral":
+                    sentiment_score = np.random.uniform(-0.75, 0.25)
+                elif sentiment == "Positive":
+                    sentiment_score = np.random.uniform(0.25, 1)
+                else:
+                    sentiment_score = 0
+                    
+                st.plotly_chart(self.visualizer.create_sentiment_gauge(sentiment_score))
     
     def get_nse_stock_data(self,symbol, days):
         """
@@ -623,6 +709,34 @@ class StockAdviser:
 
         return base_prompt + example_analysis + response_format + common_format + citation_format + instr + instr2, dcument
 
+def get_advise(user_question,adviser,cmp_tr,sentiment_response,hugg):
+    col1, col2 = st.columns(2)
+    with col1:
+        if user_question:
+            st.markdown("<h3 class='little-header'>Historical Analysis</h3>", unsafe_allow_html=True)
+            with st.container():
+                adviser.process_historical_data(cmp_tr, hugg)
+
+    with col2:
+        if user_question:
+            st.markdown("<h3 class='little-header'>Real-Time Analysis</h3>", unsafe_allow_html=True)
+            with st.container():
+                sentiment_response = adviser.process_realtime_data(cmp_tr, hugg)
+                
+    return sentiment_response
+ 
+def get_stats(user_question,adviser,cmp_tr,sentiment_response,hugg):
+    if (str(cmp_tr) != "NOTICKER"):            
+        with st.container():
+            if user_question:
+                adviser.display_charts(cmp_tr,sentiment_response)
+
+def get_adv_stats(user_question,adviser,cmp_tr,sentiment_response,hugg):
+    sentiment_response = get_advise(user_question,adviser,cmp_tr,sentiment_response,hugg)     
+    get_stats(user_question,adviser,cmp_tr,sentiment_response,hugg)
+
+def get_none(user_question,adviser,cmp_tr,sentiment_response,hugg):
+    st.write("Please enter a valid NSE stock enquiry.")
 
 def main(hugg):
     adviser = StockAdviser()
@@ -635,62 +749,62 @@ def main(hugg):
     )
 
     with st.sidebar:
-    # About the Application
+        # About the Application (Main Area)
         st.markdown("""
             <div style="background-color: #2d2d2d; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1);">
-                <h2 style="color: #e6e6e6; text-align: Left;">About the Application</h2>
-                <p style="font-size: 16px; color: #cccccc; line-height: 1.6; text-align: justify;">
-                    This application provides investment managers with daily insights into social media and news sentiment surrounding specific stocks and companies. 
-                    By analyzing posts and articles across major platforms such as <strong>Reddit</strong>, <strong>YouTube</strong>, <strong>Tumblr</strong>, <strong>Google News</strong>, 
-                    <strong>Financial Times</strong>, <strong>Bloomberg</strong>, <strong>Reuters</strong>, and <strong>Wall Street Journal</strong> (WSJ), it detects shifts 
-                    in public and media opinion that may impact stock performance.
+                <h2 style="color: #e6e6e6; text-align: center;">About the Application</h2>
+                <p style="font-size: 16px; color: #d9d9d9; line-height: 1.6; text-align: justify;">
+                    This application provides <span style="color: #80b1c1;"><strong>investment managers</strong></span> with daily insights into 
+                    <span style="color: #d3b673;"><strong>social media</strong></span> and <span style="color: #d3b673;"><strong>news sentiment</strong></span> surrounding 
+                    specific <span style="color: #80b1c1;"><strong>stocks and companies</strong></span>. By analyzing posts and articles across major platforms 
+                    such as <strong style="color: #b0b0b0;">Reddit</strong>, <strong style="color: #b0b0b0;">YouTube</strong>, <strong style="color: #b0b0b0;">Tumblr</strong>, 
+                    <strong style="color: #b0b0b0;">Google News</strong>, <strong style="color: #b0b0b0;">Financial Times</strong>, <strong style="color: #b0b0b0;">Bloomberg</strong>, 
+                    <strong style="color: #b0b0b0;">Reuters</strong>, and <strong style="color: #b0b0b0;">Wall Street Journal</strong> (WSJ), it detects shifts in public 
+                    and media opinion that may impact stock performance.
                 </p>
-                <p style="font-size: 16px; color: #cccccc; line-height: 1.6; text-align: justify;">
-                    Additionally, sources like <strong>Serper</strong> provide data from <strong>StockNews</strong>, <strong>Yahoo Finance</strong>, <strong>Insider Monkey</strong>, 
-                    <strong>Investor's Business Daily</strong>, and others. Using advanced AI techniques, the application generates a sentiment report that serves as a leading indicator, 
-                    helping managers make informed, timely adjustments to their positions. With daily updates and historical trend analysis, it empowers users to stay ahead in a fast-paced, 
-                    sentiment-driven market.
+                <p style="font-size: 16px; color: #d9d9d9; line-height: 1.6; text-align: justify;">
+                    Additionally, sources like <span style="color: #80b1c1;"><strong>Serper</strong></span> provide data from 
+                    <span style="color: #d3b673;"><strong>StockNews</strong></span>, <span style="color: #d3b673;"><strong>Yahoo Finance</strong></span>, 
+                    <span style="color: #d3b673;"><strong>Insider Monkey</strong></span>, <span style="color: #d3b673;"><strong>Investor's Business Daily</strong></span>, 
+                    and others. Using advanced <span style="color: #80b1c1;"><strong>AI techniques</strong></span>, the application generates a 
+                    <span style="color: #d3b673;"><strong>sentiment report</strong></span> that serves as a leading indicator, helping managers make informed, 
+                    timely adjustments to their positions. With daily updates and <span style="color: #d3b673;"><strong>historical trend analysis</strong></span>, 
+                    it empowers users to stay ahead in a fast-paced, sentiment-driven market.
+                </p>
+                <p style="font-size: 16px; color: #d9d9d9; line-height: 1.6; text-align: justify;">
+                    The application also utilizes <span style="color: #80b1c1;"><strong>intelligent agent functions</strong></span> to determine the type of query input 
+                    by the user. It assesses whether the query seeks <span style="color: #d3b673;"><strong>stock statistics</strong></span>, 
+                    <span style="color: #d3b673;"><strong>sentiment-analyzed advice</strong></span>, both, or is unrelated, providing the most relevant response accordingly.
                 </p>
             </div>
-        
         """, unsafe_allow_html=True)
+
         # Sidebar Footer (Floating Footer)
         st.sidebar.markdown("""
-            <div style="position: fixed; bottom: 5px; padding: 5px; background-color: #1f1f1f; border-radius: 5px; text-align: left;">
-                <p style="color: #cccccc; font-size: 14px;">
+            <div style="position: fixed; bottom: 25px; background-color: #1f1f1f; padding: 1px; border-radius: 15px; text-align: center;">
+                <p style="color: #cccccc; font-size: 14px; text-align: center; margin: 0;">
                     Developed by: <a href="https://www.linkedin.com/in/karthikeyen92/" target="_blank" style="color: #4DA8DA; text-decoration: none;">Karthikeyen Packirisamy</a>
                 </p>
             </div>
         """, unsafe_allow_html=True)
-                    
+
                     
 
     # Main content
     cmp_tr = "NOTICKER"
     st.header("Ask a question")
-    user_question = st.text_input("Ask a stock advice related question", key="user_question")
+    user_question = st.text_input("Please ask statistical or advice or both related questions on a NSE stock.", key="user_question")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if user_question:
-            st.markdown("<h3 class='little-header'>Historical Analysis</h3>", unsafe_allow_html=True)
-            with st.container():
-                cmp_tr = adviser.process_historical_data(user_question, hugg)
-
-    with col2:
-        if user_question:
-            st.markdown("<h3 class='little-header'>Real-Time Analysis</h3>", unsafe_allow_html=True)
-            with st.container():
-                sentiment_response = adviser.process_realtime_data(cmp_tr, hugg)
-      
-    if (str(cmp_tr) != "NOTICKER"):            
-        with st.container():
-            if user_question:
-                adviser.display_charts(cmp_tr,sentiment_response)
-
+    if user_question.strip():
+        cmp_tr = adviser.get_symbol(user_question)
+        sentiment_response = "none"
+        
+        agent_function = adviser.stock_agent(user_question)
+        getattr(sys.modules[__name__], agent_function)(user_question,adviser,cmp_tr,sentiment_response,hugg)
+        
+    # get_adv_stats(user_question,adviser,cmp_tr,sentiment_response,hugg)
     st.markdown("---")
-    st.markdown("<p style='text-align: center; color: #666;'>© 2024 EY</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>© 2024 Karthikeyen</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     hugg = os.getenv("IS_HUGG") == "True"
