@@ -310,11 +310,11 @@ class StockAdviser:
     
     def get_symbol(self, user_question):
         qna_system_message = """
-        You are an assistant to a financial services firm who finds the 'nse company symbol' (assigned to the company in the provided stock market)) of the company in the question provided.
+        You are an assistant to a financial services firm who finds the 'nse company symbol' of the related company in the question provided.
 
         User questions will begin with the token: ###Question.
 
-        Please find the 'nse company symbol' of the company in the question provided. In case of an invalid company, return "NOTICKER".
+        Please find the 'nse company symbol' of the related company in the question provided. In case of an invalid company, return "NOTICKER". If it is 'ZEEENT' return 'ZEEL'.
         
         Response format:
         {nse company symbol}
