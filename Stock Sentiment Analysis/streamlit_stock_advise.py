@@ -49,6 +49,29 @@ class StockAdviserUI:
     def _setup_css(self):
         st.markdown("""
             <style>
+             /* Make the top bar transparent */
+            .css-18e3th9 {  /* Class for main content area */
+                padding-top: 0rem;
+            }
+            
+            .css-1d391kg {  /* Class for the header section */
+                background-color: rgba(0, 0, 0, 0) !important;  /* Make transparent */
+                box-shadow: none;  /* Remove shadow if there is one */
+            }
+              /* Target the first markdown element in the Streamlit app */
+            .css-1v0mbdj {
+                font-size: 0px !important;
+                height: 0px !important;
+                padding: 0px !important;
+                margin: 0px !important;
+            }
+             /* Reduce or remove the top margin */
+            .css-18e3th9 {
+                padding-top: 0rem;
+            }
+            .css-1v3fvcr {
+                padding-top: 1rem;
+            }
             .main-header {
                 text-align: center;
                 padding-right: 20px;
@@ -648,7 +671,7 @@ class StockAdviser:
                     Respond "Company {Company name} {nse company symbol}({symbol}) details not found in the RealTime Data".
                 """
             citation_format = """
-                Citations: [Generate few citations based on the links provided. Mention Source ('platform') and Title('title'), linking them with url from corresponding 'link' ]
+                Citations: [Generate few citations based on the links provided. Mention Source ('platform') and Title('title')](hyperlink them with url from corresponding 'link')
                 """
             instr2 = """
             Stricktly Never mention 'document'/'documents', not even once. Instead mention it as 'Real-Time Social media and News data'
@@ -796,9 +819,38 @@ def main(hugg):
 
     # Main content
     cmp_tr = "NOTICKER"
-    st.header("Ask a question")
-    user_question = st.text_input("Please ask statistical or advice or both related questions on a NSE stock.", key="user_question")
+        
+    # Define example queries
+    example_queries = [
+        "0. ",
+        "1. Is it a good time to buy bharati airtel ?",
+        "2. Advise about vodafone idea ltd ?",
+        "3. is TCS stock good to invest? advise and tell how it is now.",
+        "4. Advise on HDFC bank and provide statistics.",
+        "5. How about Asian Paints ?",
+        "6. Advise about the company that manufactures swift car and provide stats?",
+        "7. Any thoughts on N.R. Narayana Murthy's company?",
+        "8. Opinion and current values of the company that broadcasts 'Sa Re Ga Ma Pa 2024' ?"
+    ]
 
+    selected_query = ""
+    
+    # Layout with two columns
+    cola1, cola2 = st.columns([3, 1])
+
+    # inp
+    with cola1:
+        st.header("Ask a question")
+
+    # Dropdown in the right column
+    with cola2:
+        selected_query = st.selectbox("Example Queries", example_queries, index=0)
+
+    # Automatically update text input when a new example is selected
+    if selected_query:
+        query_text = selected_query.split(". ", 1)[1] if selected_query != example_queries[0] else ""
+        user_question = st.text_input("Please ask statistical or advice or both related questions on a NSE stock.",value=query_text if selected_query else "", key="user_question")
+    
     if user_question.strip():
         cmp_tr = adviser.get_symbol(user_question)
         sentiment_response = "none"
