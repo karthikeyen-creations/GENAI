@@ -52,3 +52,52 @@ demo = gr.Interface(
 
 # Launch the Gradio application
 demo.launch()
+
+
+
+
+x = """
+CREATE OR REPLACE PROCEDURE SIMPLE_BONUS_CALC (
+    IN P_EMPLOYEE_ID INT,
+    OUT P_BONUS DECIMAL(10, 2),
+    OUT P_ERROR_CODE INT,
+    OUT P_ERROR_MESSAGE VARCHAR(255)
+)
+LANGUAGE SQL
+BEGIN
+    DECLARE V_SALARY DECIMAL(10, 2);
+    DECLARE V_PERFORMANCE_SCORE DECIMAL(5, 2);
+    DECLARE V_BONUS_RATE DECIMAL(5, 2) DEFAULT 0.0;
+
+    -- Default OUT parameters
+    SET P_ERROR_CODE = 0;
+    SET P_ERROR_MESSAGE = 'Success';
+
+    -- Error handler
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET P_ERROR_CODE = SQLCODE;
+        SET P_ERROR_MESSAGE = 'Error calculating bonus';
+        SET P_BONUS = 0.0;
+    END;
+
+    -- Fetch salary and performance score
+    SELECT SALARY, PERFORMANCE_SCORE 
+    INTO V_SALARY, V_PERFORMANCE_SCORE
+    FROM EMPLOYEE
+    WHERE EMPLOYEE_ID = P_EMPLOYEE_ID;
+
+    -- Determine bonus rate based on performance score
+    IF V_PERFORMANCE_SCORE >= 90 THEN
+        SET V_BONUS_RATE = 0.15;
+    ELSEIF V_PERFORMANCE_SCORE >= 75 THEN
+        SET V_BONUS_RATE = 0.10;
+    ELSE
+        SET V_BONUS_RATE = 0.05;
+    END IF;
+
+    -- Calculate bonus
+    SET P_BONUS = V_SALARY * V_BONUS_RATE;
+END;
+
+"""

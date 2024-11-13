@@ -43,3 +43,4 @@ pandas_datareader
 yfinance
 transformers
 huggingface_hub
+pytesseract
