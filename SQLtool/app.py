@@ -63,7 +63,7 @@ class DB2ToPostgresConverterApp:
             1. Analyze the logic and operations performed by the DB2 Stored Procedure.
             2. Provide a detailed explanation of the DB2 Stored Procedure, highlighting the key steps and functionality.
             
-            Format the response in a very basic plain HTML with titles, subtitles, and bullet points for key steps. (for a dark themed background)
+            Format the response in a very basic plain HTML (without styles) with titles, subtitles, and bullet points for key steps. (for a dark themed background)
             """
         user_message = f"###DB2 Stored Procedure\n{db2_code}"
         return self.mistral_chat(system_message, user_message)
@@ -77,7 +77,7 @@ class DB2ToPostgresConverterApp:
             1. Analyze the results, logic, and operations performed by the DB2 Stored Procedure and the PostgreSQL function.
             2. Compare the DB2 Stored Procedure and the PostgreSQL function, noting any differences in syntax, results, functions, and overall logic.
             
-            Format the response in a very basic plain HTML, highlighting syntax differences and logical steps. Add tabulations, if needed. Finally, Emphasize and give a brief if the result would vary between the two codes. (for a dark themed background)
+            Format the response in a very basic plain HTML (without styles), highlighting syntax differences and logical steps. Add tabulations, if needed. Finally, Emphasize and give a brief if the result would vary between the two codes. (for a dark themed background)
             """
         user_message = (
             f"###DB2 Stored Procedure\n{db2_code}\n\n###PostgreSQL Function\n{postgres_code}"
