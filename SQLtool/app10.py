@@ -38,7 +38,7 @@ class DB2ToPostgresConverterApp:
             1. Analyze the logic and operations performed by the DB2 Stored Procedure.
             2. Generate an equivalent PostgreSQL function that performs the same operations.
             
-            Return the PostgreSQL result alone.
+            Return only the PostgreSQL result alone.
             """
         user_message = f"###DB2 Stored Procedure\n{db2_code}"
         print(user_message)
@@ -79,6 +79,17 @@ class DB2ToPostgresConverterApp:
         comparison = self.compare_procedures(db2_code, postgres_code)
         return postgres_code, explanation, comparison
 
+def remove_overlap_and_concatenate(text1, text2):
+    max_overlap = 0
+    min_length = min(len(text1), len(text2))
+    
+    for i in range(1, min_length + 1):
+        if text1[-i:] == text2[:i]:
+            max_overlap = i
+    
+    concatenated_text = text1 + text2[max_overlap:]
+    return concatenated_text
+
 # Load Hugging Face API key from environment variable
 api_key = os.getenv("HUGGINGFACE_HUB_TOKEN_SQL_TOOL")
 if api_key is None:
@@ -100,6 +111,12 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("""<div style="position: fixed; bottom: 25px; background-color: #1f1f1f; padding: 10px; border-radius: 15px; text-align: center;">
+        <p style="color: #cccccc; font-size: 14px; text-align: center; margin: 0;">
+            Developed by: <a href="https://www.linkedin.com/in/karthikeyen92/" target="_blank" style="color: #4DA8DA; text-decoration: none;">Karthikeyen Packirisamy</a>
+        </p>
+    </div>""", unsafe_allow_html=True)
+
 # Main App Layout
 st.markdown(
     """
@@ -114,44 +131,53 @@ st.markdown(
 # Tabs for input options
 tab1, tab2 = st.tabs(["Text Input", "Image Upload"])
 
-# Input Variable for DB2 Code
-db2_code_input = ""
+# Initialize or retrieve session state for main input and OCR text from images
+db2_code_input0 = st.session_state.get("db2_code_input0", "")
+db2_code_from_image1 = st.session_state.get("db2_code_from_image1", "")
+db2_code_from_image2 = st.session_state.get("db2_code_from_image2", "")
 
+# Text Input Tab
 with tab1:
-    db2_code_input = st.text_area("Enter DB2 Stored Procedure", placeholder="Paste your DB2 Stored Procedure code here...", height=200)
+    db2_code_input = st.text_area("Enter DB2 Stored Procedure", placeholder="Paste your DB2 Stored Procedure code here...", height=200, value=st.session_state.get("db2_code_input0", ""))
 
+# Image Upload Tab
 with tab2:
-    uploaded_image = st.file_uploader("Upload an image containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"])
-    if uploaded_image:
-        # Use OCR to extract text from the uploaded image
-        image = Image.open(uploaded_image)
-        db2_code_from_image = pytesseract.image_to_string(image)
-        
-        st.write("### Extracted DB2 Code from Image")
-        st.text_area("OCR Extracted Code", db2_code_from_image, height=200)  # Display extracted text in a text area
-        
-        db2_code_input = db2_code_from_image  # Set the extracted text as input
+    uploaded_image1 = st.file_uploader("Upload the first image containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"])
+    uploaded_image2 = st.file_uploader("Upload the second image containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"])
 
-# Process conversion when button is clicked
-if st.button("Convert and Analyze") and db2_code_input:
+    if uploaded_image1:
+        image1 = Image.open(uploaded_image1)
+        db2_code_from_image1 = pytesseract.image_to_string(image1)
+        
+    if uploaded_image2:
+        image2 = Image.open(uploaded_image2)
+        db2_code_from_image2 = pytesseract.image_to_string(image2)
+
+    # Display OCR text areas
+    st.text_area("OCR Extracted Code from Image 1", db2_code_from_image1, height=200, key="db2_code_from_image1")
+    st.text_area("OCR Extracted Code from Image 2", db2_code_from_image2, height=200, key="db2_code_from_image2")
+
+    db2_code_input = remove_overlap_and_concatenate(st.session_state.get("db2_code_from_image1", ""), st.session_state.get("db2_code_from_image2", ""))
+    st.text_area("Concatenated DB2 Code", db2_code_input,key="db2_code_input0", height=200)
+
+# # Store updated values in session state
+# st.session_state["db2_code_input"] = db2_code_input
+# st.session_state["db2_code_from_image1"] = db2_code_from_image1
+# st.session_state["db2_code_from_image2"] = db2_code_from_image2
+
+# Convert and Analyze button
+if st.button("Convert and Analyze", key="convert_button") and st.session_state.get("db2_code_input0", ""):
     with st.spinner("Processing..."):
-        postgres_code, explanation, comparison = app.process_db2_to_postgres(db2_code_input)
+        postgres_code, explanation, comparison = app.process_db2_to_postgres(st.session_state.get("db2_code_input0", ""))
     
     # Display results
     st.write("### PostgreSQL Function")
     st.code(postgres_code, language='sql')
+    
+    print(explanation)
 
     st.write("### Explanation of DB2 Stored Procedure")
     st.markdown(explanation, unsafe_allow_html=True)
 
     st.write("### Comparison Between DB2 and PostgreSQL")
     st.markdown(comparison, unsafe_allow_html=True)
-
-# Footer
-st.sidebar.markdown("""
-    <div style="position: fixed; bottom: 25px; background-color: #1f1f1f; padding: 10px; border-radius: 15px; text-align: center;">
-        <p style="color: #cccccc; font-size: 14px; text-align: center; margin: 0;">
-            Developed by: <a href="https://www.linkedin.com/in/karthikeyen92/" target="_blank" style="color: #4DA8DA; text-decoration: none;">Karthikeyen Packirisamy</a>
-        </p>
-    </div>
-""", unsafe_allow_html=True)
