@@ -147,20 +147,6 @@ with st.sidebar:
         </p>
     </div>""", unsafe_allow_html=True)
 
-# Main App Layout
-st.markdown(
-    """
-    <h1 style="text-align: center; color: #4CAF50">DB2 to PostgreSQL Converter</h1>
-    <p style="text-align: center; color: #888888">
-        Convert DB2 Stored Procedures to PostgreSQL Functions and Analyze Their Differences
-    </p>
-    <hr>
-    """, unsafe_allow_html=True
-)
-
-# Tabs for input options
-tab1, tab2 = st.tabs(["Text Input", "Images Upload"])
-
 # Callback function to update concatenated text whenever any OCR text area changes
 def update_concatenated_text():
     concatenated_text = remove_overlap_and_concatenate(*[st.session_state[f"db2_code_from_image_{i}"] for i in range(10)])
@@ -176,6 +162,20 @@ def display_outs(postgres_code, explanation, comparison):
 
     st.write("### Comparison Between DB2 and PostgreSQL")
     st.write(comparison, unsafe_allow_html=True)
+
+# Main App Layout
+st.markdown(
+    """
+    <h1 style="text-align: center; color: #4CAF50">DB2 to PostgreSQL Converter</h1>
+    <p style="text-align: center; color: #888888">
+        Convert DB2 Stored Procedures to PostgreSQL Functions and Analyze Their Differences
+    </p>
+    <hr>
+    """, unsafe_allow_html=True
+)
+
+# Tabs for input options
+tab1, tab2 = st.tabs(["Text Input", "Images Upload"])
 
 # Text Input Tab
 with tab1:
