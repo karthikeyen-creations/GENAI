@@ -41,7 +41,6 @@ class DB2ToPostgresConverterApp:
             Return only the PostgreSQL result alone.
             """
         user_message = f"###DB2 Stored Procedure\n{db2_code}"
-        print(user_message)
         return self.mistral_chat(system_message, user_message)
 
     def explain_db2_procedure(self, db2_code):
@@ -70,7 +69,6 @@ class DB2ToPostgresConverterApp:
         user_message = (
             f"###DB2 Stored Procedure\n{db2_code}\n\n###PostgreSQL Function\n{postgres_code}"
         )
-        print(user_message)
         return self.mistral_chat(system_message, user_message)
 
     def process_db2_to_postgres(self, db2_code):
@@ -79,16 +77,25 @@ class DB2ToPostgresConverterApp:
         comparison = self.compare_procedures(db2_code, postgres_code)
         return postgres_code, explanation, comparison
 
-def remove_overlap_and_concatenate(text1, text2):
-    max_overlap = 0
-    min_length = min(len(text1), len(text2))
+def remove_overlap_and_concatenate(*texts):
+    result = texts[0]
+    for i in range(1, len(texts)):
+        max_overlap = 0
+        min_length = min(len(result), len(texts[i]))
+        for j in range(1, min_length + 1):
+            if result[-j:] == texts[i][:j]:
+                max_overlap = j
+        result += texts[i][max_overlap:]
+    return result
+
+# Initialize session state if necessary
+if 'db2_code_input0' not in st.session_state:
+    st.session_state['db2_code_input0'] = ""
     
-    for i in range(1, min_length + 1):
-        if text1[-i:] == text2[:i]:
-            max_overlap = i
-    
-    concatenated_text = text1 + text2[max_overlap:]
-    return concatenated_text
+# Initialize session state for OCR extracted code from images
+for i in range(10):
+    if f"db2_code_from_image_{i}" not in st.session_state:
+        st.session_state[f"db2_code_from_image_{i}"] = ""
 
 # Load Hugging Face API key from environment variable
 api_key = os.getenv("HUGGINGFACE_HUB_TOKEN_SQL_TOOL")
@@ -101,12 +108,35 @@ app = DB2ToPostgresConverterApp(api_key=api_key)
 with st.sidebar:
     st.markdown("""
         <div style="background-color: #2d2d2d; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1);">
-            <h2 style="color: #e6e6e6; text-align: center;">About the Application</h2>
-            <p style="font-size: 16px; color: #d9d9d9; line-height: 1.6; text-align: justify;">
-                This application converts <span style="color: #80b1c1;"><strong>DB2 Stored Procedures</strong></span> to equivalent 
-                <span style="color: #d3b673;"><strong>PostgreSQL Functions</strong></span> while offering in-depth explanations 
-                and comparisons. It’s an ideal tool for database professionals and developers transitioning between 
-                these platforms.
+            <h2 style="color: #ffffff; text-align: center;">About the Application</h2>
+            <p style="font-size: 16px; color: #f0f0f0; line-height: 1.6; text-align: justify;">
+                Welcome to the <span style="color: #80b1c1;"><strong>DB2 to PostgreSQL Converter</strong></span> application. 
+                This tool is designed to assist database professionals and developers in seamlessly converting DB2 Stored Procedures to equivalent PostgreSQL functions. 
+                It handles both code conversion and analysis, offering insights into key differences between DB2 and PostgreSQL, along with a detailed explanation of each procedure.
+            </p>
+            <p style="font-size: 16px; color: #f0f0f0; line-height: 1.6; text-align: justify;">
+                <strong style="color: #ffb84d;">Key Features:</strong>
+                <ul style="color: #f0f0f0; font-size: 14px; list-style-type: disc; padding-left: 20px;">
+                    <li><strong style="color: #ffcc00;">DB2 to PostgreSQL Conversion:</strong> Effortlessly convert DB2 Stored Procedures into equivalent PostgreSQL functions while preserving logic and functionality.</li>
+                    <li><strong style="color: #ffcc00;">In-depth Code Explanation:</strong> Receive a detailed breakdown of the DB2 procedure, highlighting the steps, logic, and specific operations involved.</li>
+                    <li><strong style="color: #ffcc00;">Code Comparison:</strong> Compare the DB2 Stored Procedure with the generated PostgreSQL function, emphasizing any differences in syntax and logic.</li>
+                    <li><strong style="color: #ffcc00;">Image Upload Support:</strong> Upload up to <strong style="color: #ffcc00;">10 images</strong> containing DB2 Stored Procedure code. The OCR will automatically extract and concatenate the code.</li>
+                    <li><strong style="color: #ffcc00;">Real-time Updates:</strong> Any modifications to the OCR extracted text will dynamically update the concatenated code, ensuring the conversion is based on the most recent input.</li>
+                    <li><strong style="color: #ffcc00;">Cross-platform Compatibility:</strong> Although optimized for DB2 to PostgreSQL migration, the app is adaptable to support other database systems.</li>
+                </ul>
+            </p>
+            <p style="font-size: 16px; color: #f0f0f0; line-height: 1.6; text-align: justify;">
+                <strong style="color: #ffb84d;">How it Works:</strong>
+                <ol style="color: #f0f0f0; font-size: 14px; list-style-type: decimal; padding-left: 20px;">
+                    <li><strong style="color: #ffcc00;">Input Method:</strong> Paste your DB2 code directly into the text area, or upload up to <strong style="color: #ffcc00;">10 images</strong> containing DB2 code.</li>
+                    <li><strong style="color: #ffcc00;">OCR Processing:</strong> The app will automatically use OCR to extract the code from images and concatenate them into a single code block for conversion.</li>
+                    <li><strong style="color: #ffcc00;">Conversion:</strong> The DB2 code is then converted to an equivalent PostgreSQL function while maintaining the original logic and flow.</li>
+                    <li><strong style="color: #ffcc00;">Explanation and Comparison:</strong> A detailed explanation of the DB2 code and a comparison between the DB2 and PostgreSQL versions is provided to ensure accuracy.</li>
+                    <li><strong style="color: #ffcc00;">Final Output:</strong> You will receive the resulting PostgreSQL function, the explanation, and a comparison of the DB2 and PostgreSQL code.</li>
+                </ol>
+            </p>
+            <p style="font-size: 16px; color: #f0f0f0; line-height: 1.6; text-align: justify;">
+                This tool is perfect for those who need to migrate legacy DB2 systems to PostgreSQL, analyze database code, or compare how these two database systems handle similar tasks. By offering both code conversion and deep analysis, it provides a streamlined way to ensure your database migrations are accurate and efficient.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -129,55 +159,57 @@ st.markdown(
 )
 
 # Tabs for input options
-tab1, tab2 = st.tabs(["Text Input", "Image Upload"])
+tab1, tab2 = st.tabs(["Text Input", "Images Upload"])
 
-# Initialize or retrieve session state for main input and OCR text from images
-db2_code_input0 = st.session_state.get("db2_code_input0", "")
-db2_code_from_image1 = st.session_state.get("db2_code_from_image1", "")
-db2_code_from_image2 = st.session_state.get("db2_code_from_image2", "")
+# Callback function to update concatenated text whenever any OCR text area changes
+def update_concatenated_text():
+    concatenated_text = remove_overlap_and_concatenate(*[st.session_state[f"db2_code_from_image_{i}"] for i in range(10)])
+    st.session_state["db2_code_input0"] = concatenated_text
 
 # Text Input Tab
 with tab1:
     db2_code_input = st.text_area("Enter DB2 Stored Procedure", placeholder="Paste your DB2 Stored Procedure code here...", height=200, value=st.session_state.get("db2_code_input0", ""))
 
+    # Convert and Analyze button
+    if st.button("Convert and Analyze", key="convert_button_text") and db2_code_input:
+        with st.spinner("Processing..."):
+            postgres_code, explanation, comparison = app.process_db2_to_postgres(db2_code_input)
+        
+        # Display results
+        st.write("### PostgreSQL Function")
+        st.code(postgres_code, language='sql')
+        
+        st.write("### Explanation of DB2 Stored Procedure")
+        st.markdown(explanation, unsafe_allow_html=True)
+
+        st.write("### Comparison Between DB2 and PostgreSQL")
+        st.markdown(comparison, unsafe_allow_html=True)
+
 # Image Upload Tab
 with tab2:
-    uploaded_image1 = st.file_uploader("Upload the first image containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"])
-    uploaded_image2 = st.file_uploader("Upload the second image containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"])
-
-    if uploaded_image1:
-        image1 = Image.open(uploaded_image1)
-        db2_code_from_image1 = pytesseract.image_to_string(image1)
+    for i in range(10):
+        uploaded_image = st.file_uploader(f"Upload image {i+1} containing DB2 Stored Procedure code", type=["png", "jpg", "jpeg"], key=f"image_upload_{i}")
+        if uploaded_image:
+            image = Image.open(uploaded_image)
+            st.session_state[f"db2_code_from_image_{i}"] = pytesseract.image_to_string(image)
         
-    if uploaded_image2:
-        image2 = Image.open(uploaded_image2)
-        db2_code_from_image2 = pytesseract.image_to_string(image2)
+        # Text area for OCR extracted code with callback
+        st.text_area(f"OCR Extracted Code from Image {i+1}", st.session_state[f"db2_code_from_image_{i}"], height=200, key=f"ocr_text_area_{i}", on_change=update_concatenated_text)
 
-    # Display OCR text areas
-    st.text_area("OCR Extracted Code from Image 1", db2_code_from_image1, height=200, key="db2_code_from_image1")
-    st.text_area("OCR Extracted Code from Image 2", db2_code_from_image2, height=200, key="db2_code_from_image2")
+    # Display the concatenated result
+    st.text_area("Concatenated DB2 Code", st.session_state["db2_code_input0"], height=200)
 
-    db2_code_input = remove_overlap_and_concatenate(st.session_state.get("db2_code_from_image1", ""), st.session_state.get("db2_code_from_image2", ""))
-    st.text_area("Concatenated DB2 Code", db2_code_input,key="db2_code_input0", height=200)
+    # Convert and Analyze button
+    if st.button("Convert and Analyze", key="convert_button_image") and st.session_state.get("db2_code_input0", ""):
+        with st.spinner("Processing..."):
+            postgres_code, explanation, comparison = app.process_db2_to_postgres(st.session_state.get("db2_code_input0", ""))
+        
+        # Display results
+        st.write("### PostgreSQL Function")
+        st.code(postgres_code, language='sql')
+        
+        st.write("### Explanation of DB2 Stored Procedure")
+        st.markdown(explanation, unsafe_allow_html=True)
 
-# # Store updated values in session state
-# st.session_state["db2_code_input"] = db2_code_input
-# st.session_state["db2_code_from_image1"] = db2_code_from_image1
-# st.session_state["db2_code_from_image2"] = db2_code_from_image2
-
-# Convert and Analyze button
-if st.button("Convert and Analyze", key="convert_button") and st.session_state.get("db2_code_input0", ""):
-    with st.spinner("Processing..."):
-        postgres_code, explanation, comparison = app.process_db2_to_postgres(st.session_state.get("db2_code_input0", ""))
-    
-    # Display results
-    st.write("### PostgreSQL Function")
-    st.code(postgres_code, language='sql')
-    
-    print(explanation)
-
-    st.write("### Explanation of DB2 Stored Procedure")
-    st.markdown(explanation, unsafe_allow_html=True)
-
-    st.write("### Comparison Between DB2 and PostgreSQL")
-    st.markdown(comparison, unsafe_allow_html=True)
+        st.write("### Comparison Between DB2 and PostgreSQL")
+        st.markdown(comparison, unsafe_allow_html=True)
